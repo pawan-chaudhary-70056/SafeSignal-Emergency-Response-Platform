@@ -1,0 +1,120 @@
+# SafeSignal local development infrastructure.
+#
+#   docker compose up -d          # start PostgreSQL + Redis
+#   docker compose ps             # health status
+#   docker compose logs -f redis  # inspect logs
+#
+# The backend and frontend run on the host during development and connect to the
+# published ports below. See docs/09-deployment/docker-and-database-setup.md.
+#
+# Migrations and production seeding run as one-off containers:
+#
+#   docker compose --profile tools run --rm migrate
+#   docker compose --profile tools run --rm migrate npx tsx scripts/seed-production.ts
+
+x-backend-environment: &backend-environment
+  # Local stack over http: cookies stay non-Secure so the browser sends them.
+  NODE_ENV: development
+  PORT: "4100"
+  DATABASE_URL: postgresql://${POSTGRES_USER:-safesignal}:${POSTGRES_PASSWORD:-safesignal}@postgres:5432/${POSTGRES_DB:-safesignal}?schema=public
+  REDIS_URL: redis://redis:6379
+  SESSION_TTL_DAYS: "7"
+  # Exactly one proxy hop: the nginx frontend container.
+  TRUST_PROXY: "1"
+  COOKIE_SAME_SITE: lax
+  FRONTEND_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: safesignal-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-safesignal}
+      POSTGRES_USER: ${POSTGRES_USER:-safesignal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-safesignal}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - safesignal_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-safesignal} -d ${POSTGRES_DB:-safesignal}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: safesignal-redis
+    restart: unless-stopped
+    # AOF keeps rate-limit counters across container restarts. Counters are
+    # short-lived, so losing the tail of the log during a crash is acceptable.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "127.0.0.1:6381:6379"
+    volumes:
+      - safesignal_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: safesignal-backend
+    restart: unless-stopped
+    environment: *backend-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4100/api/v1/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # One-off migration / seed runner. It is excluded from `docker compose up` by
+  # the tools profile and exits after the command finishes.
+  migrate:
+    build:
+      context: ./backend
+    # Reuse the backend image so migrations run with the exact deployed code.
+    image: safesignal-backend:latest
+    profiles: ["tools"]
+    restart: "no"
+    environment: *backend-environment
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: safesignal-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  safesignal_pg_data:
+    name: safesignal_pg_data
+  safesignal_redis_data:
+    name: safesignal_redis_data
