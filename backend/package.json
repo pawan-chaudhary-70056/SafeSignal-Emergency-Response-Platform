@@ -1,0 +1,37 @@
+{
+  "name": "safesignal-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx scripts/run-tests.ts",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed:production": "tsx scripts/seed-production.ts",
+    "db:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "@prisma/client": "6.19.3",
+    "express": "^5.1.0",
+    "redis": "^6.3.1",
+    "socket.io": "^4.8.4",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^6.0.3",
+    "prisma": "6.19.3",
+    "socket.io-client": "^4.8.4",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
+  }
+}
