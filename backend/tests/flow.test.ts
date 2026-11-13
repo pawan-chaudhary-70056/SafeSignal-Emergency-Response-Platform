@@ -38,7 +38,7 @@ async function assertIsolatedTestDatabase() {
 
 async function resetDatabase() {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Notification", "AuditLog", "Assignment", "IncidentStatusHistory", "Incident", "ResponderProfile", "Session", "User", "EmergencyCategory", "Role" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "Evidence", "Notification", "AuditLog", "Assignment", "IncidentStatusHistory", "Incident", "ResponderProfile", "Session", "User", "EmergencyCategory", "Role" RESTART IDENTITY CASCADE',
   );
   await prisma.role.createMany({
     data: [
@@ -400,6 +400,7 @@ describe("SafeSignal emergency response flow", () => {
           categoryId: await categoryId(),
           description: "Realtime test incident near the hospital gate.",
           contactInformation: "+9779800000000",
+          location: { latitude: 27.7172, longitude: 85.324, description: "Main gate" },
         });
 
       assert.equal(created.status, 201, created.text);
@@ -497,6 +498,8 @@ describe("SafeSignal emergency response flow", () => {
     const payload = {
       categoryId: await categoryId(),
       description: "CSRF probe incident near the hospital gate.",
+      contactInformation: "+9779800000000",
+      location: { latitude: 27.7172, longitude: 85.324, description: "Main gate" },
     };
 
     const missingToken = await request(app)
@@ -959,5 +962,313 @@ describe("SafeSignal emergency response flow", () => {
 
     const anonymous = await request(app).get("/api/v1/admin/audit-logs");
     assert.equal(anonymous.status, 401, "audit logs must reject anonymous requests");
+  });
+
+  it("attaches, lists, and downloads incident evidence with scoped access", async () => {
+    await createUser("DISPATCHER", "dispatcher@test.local");
+    const assignedResponder = await createUser("RESPONDER", "assigned-responder@test.local");
+    const outsider = await createUser("CITIZEN", "outsider@test.local");
+
+    await request(app).post("/api/v1/auth/register").send({
+      fullName: "Evidence Citizen",
+      email: "evidence@test.local",
+      password: PASSWORD,
+    });
+    const citizen = await login("evidence@test.local");
+    const incident = await submitIncident(citizen);
+
+    // A minimal valid PNG: 8-byte signature plus filler.
+    const png = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.alloc(16, 7),
+    ]);
+
+    const anonymous = await request(app)
+      .post(`/api/v1/incidents/${incident.id}/evidence`)
+      .set("Content-Type", "application/octet-stream")
+      .set("x-file-name", "photo.png")
+      .send(png);
+    assert.equal(anonymous.status, 401, "evidence upload requires a session");
+
+    const uploaded = await citizen
+      .post(`/api/v1/incidents/${incident.id}/evidence`)
+      .set("Content-Type", "application/octet-stream")
+      .set("x-file-name", "injury photo.png")
+      .send(png);
+    assert.equal(uploaded.status, 201, uploaded.text);
+    assert.equal(uploaded.body.evidence.mimeType, "image/png");
+    assert.equal(uploaded.body.evidence.fileName, "injury photo.png");
+    assert.equal(uploaded.body.evidence.uploadedBy.fullName, "Evidence Citizen");
+
+    // Content is verified, not the declared type: text disguised as PNG fails.
+    const disguised = await citizen
+      .post(`/api/v1/incidents/${incident.id}/evidence`)
+      .set("Content-Type", "application/octet-stream")
+      .set("x-file-name", "not-a-photo.png")
+      .send(Buffer.from("this is definitely not an image"));
+    assert.equal(disguised.status, 400);
+    assert.equal(disguised.body.error.code, "UNSUPPORTED_EVIDENCE_TYPE");
+
+    const empty = await citizen
+      .post(`/api/v1/incidents/${incident.id}/evidence`)
+      .set("Content-Type", "application/octet-stream")
+      .set("x-file-name", "empty.png")
+      .send(Buffer.alloc(0));
+    assert.equal(empty.status, 400);
+    assert.equal(empty.body.error.code, "EMPTY_EVIDENCE");
+
+    const oversized = await citizen
+      .post(`/api/v1/incidents/${incident.id}/evidence`)
+      .set("Content-Type", "application/octet-stream")
+      .set("x-file-name", "huge.png")
+      .send(Buffer.alloc(6 * 1024 * 1024, 3));
+    assert.equal(oversized.status, 413, oversized.text);
+    assert.equal(oversized.body.error.code, "PAYLOAD_TOO_LARGE");
+
+    // Other citizens, and responders without the assignment, stay locked out.
+    const outsiderAgent = await login("outsider@test.local");
+    const outsiderList = await outsiderAgent.get(`/api/v1/incidents/${incident.id}/evidence`);
+    assert.equal(outsiderList.status, 403);
+    const outsiderUpload = await outsiderAgent
+      .post(`/api/v1/incidents/${incident.id}/evidence`)
+      .set("Content-Type", "application/octet-stream")
+      .set("x-file-name", "sneaky.png")
+      .send(png);
+    assert.equal(outsiderUpload.status, 403);
+
+    const unassignedResponder = await createUser("RESPONDER", "unassigned-responder@test.local");
+    const responderAgent = await login("unassigned-responder@test.local");
+    assert.ok(unassignedResponder, "unassigned responder exists");
+    const unassignedList = await responderAgent.get(`/api/v1/incidents/${incident.id}/evidence`);
+    assert.equal(unassignedList.status, 403);
+
+    // The dispatcher sees, downloads, and can also attach evidence.
+    const dispatcher = await login("dispatcher@test.local");
+    const list = await dispatcher.get(`/api/v1/incidents/${incident.id}/evidence`);
+    assert.equal(list.status, 200, list.text);
+    assert.equal(list.body.evidence.length, 1);
+    assert.equal(list.body.evidence[0].mimeType, "image/png");
+
+    const dispatcherUpload = await dispatcher
+      .post(`/api/v1/incidents/${incident.id}/evidence`)
+      .set("Content-Type", "application/octet-stream")
+      .set("x-file-name", "dispatcher-note.pdf")
+      .send(
+        Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.from("% dispatcher field notes\n")]),
+      );
+    assert.equal(dispatcherUpload.status, 201, dispatcherUpload.text);
+    assert.equal(dispatcherUpload.body.evidence.mimeType, "application/pdf");
+
+    const pdfDownload = await dispatcher.get(`/api/v1/evidence/${dispatcherUpload.body.evidence.id}`);
+    assert.equal(pdfDownload.status, 200);
+    assert.equal(pdfDownload.headers["content-type"], "application/pdf");
+    assert.match(String(pdfDownload.headers["content-disposition"]), /attachment/);
+    assert.equal(String(pdfDownload.headers["cache-control"]).replace(/\s/g, ""), "private,no-store");
+
+    // Citizen notifies dispatchers; dispatcher upload notifies the citizen.
+    const dispatcherNotifications = await dispatcher.get("/api/v1/notifications");
+    assert.equal(dispatcherNotifications.body.notifications[0].type, "EVIDENCE_ADDED");
+    const citizenNotifications = await citizen.get("/api/v1/notifications");
+    assert.equal(citizenNotifications.body.notifications[0].type, "EVIDENCE_ADDED");
+
+    // The assigned responder can list and download after dispatch.
+    await dispatcher.post(`/api/v1/incidents/${incident.id}/review`);
+    const verified = await dispatcher.post(`/api/v1/incidents/${incident.id}/verify`);
+    assert.equal(verified.status, 200, verified.text);
+    const dispatcherAssign = await dispatcher.post("/api/v1/assignments").send({
+      incidentId: incident.id,
+      responderId: assignedResponder.id,
+    });
+    assert.equal(dispatcherAssign.status, 201, dispatcherAssign.text);
+    const assignedAgent = await login("assigned-responder@test.local");
+    const assignedList = await assignedAgent.get(`/api/v1/incidents/${incident.id}/evidence`);
+    assert.equal(assignedList.status, 200);
+    const assignedDownload = await assignedAgent.get(`/api/v1/evidence/${uploaded.body.evidence.id}`);
+    assert.equal(assignedDownload.status, 200);
+    assert.equal(assignedDownload.headers["content-type"], "image/png");
+    assert.ok(Buffer.compare(assignedDownload.body, png) === 0, "stored bytes are returned exactly");
+
+    // Only the uploader or a dispatcher can remove evidence.
+    const citizenDelete = await citizen.delete(
+      `/api/v1/evidence/${dispatcherUpload.body.evidence.id}`,
+    );
+    assert.equal(citizenDelete.status, 403);
+    const dispatcherDelete = await dispatcher.delete(
+      `/api/v1/evidence/${dispatcherUpload.body.evidence.id}`,
+    );
+    assert.equal(dispatcherDelete.status, 204);
+    const afterDelete = await dispatcher.get(`/api/v1/incidents/${incident.id}/evidence`);
+    assert.equal(afterDelete.body.evidence.length, 1);
+
+    const adminUser = await createUser("ADMIN", "audit-admin@test.local");
+    const admin = await login("audit-admin@test.local");
+    const uploadsAudit = await admin.get("/api/v1/admin/audit-logs?action=evidence.uploaded");
+    assert.equal(uploadsAudit.status, 200, uploadsAudit.text);
+    assert.equal(uploadsAudit.body.pagination.totalItems, 2);
+    assert.equal(uploadsAudit.body.logs[0]?.entityId, incident.id);
+    assert.ok(adminUser, "audit admin exists");
+  });
+
+  it("keeps internal dispatch details out of citizen incident responses", async () => {
+    await createUser("DISPATCHER", "dispatcher@test.local");
+    const responderUser = await createUser("RESPONDER", "responder@test.local");
+
+    await request(app).post("/api/v1/auth/register").send({
+      fullName: "Privacy Citizen",
+      email: "privacy@test.local",
+      password: PASSWORD,
+    });
+    const citizen = await login("privacy@test.local");
+    const incident = await submitIncident(citizen);
+
+    const dispatcher = await login("dispatcher@test.local");
+    await dispatcher.post(`/api/v1/incidents/${incident.id}/review`);
+    await dispatcher.post(`/api/v1/incidents/${incident.id}/verify`);
+
+    const note = "Internal: approach from the rear gate.";
+    const created = await dispatcher.post("/api/v1/assignments").send({
+      incidentId: incident.id,
+      responderId: responderUser.id,
+      note,
+    });
+    assert.equal(created.status, 201, created.text);
+
+    const detail = await citizen.get(`/api/v1/incidents/${incident.id}`);
+    assert.equal(detail.status, 200, detail.text);
+
+    const visible = detail.body.incident.assignments[0] as Record<string, unknown>;
+    assert.deepEqual(Object.keys(visible).sort(), [
+      "assignedAt",
+      "id",
+      "incidentId",
+      "status",
+    ]);
+    assert.equal(visible.responderId, undefined);
+    assert.equal(visible.assignedById, undefined);
+    assert.equal(visible.assignmentNote, undefined);
+
+    const list = await citizen.get("/api/v1/incidents");
+    const listed = list.body.incidents.find((row: { id: string }) => row.id === incident.id);
+    assert.deepEqual(Object.keys(listed.assignments[0]).sort(), [
+      "assignedAt",
+      "id",
+      "incidentId",
+      "status",
+    ]);
+
+    // Dispatchers keep the operational detail they need for coordination.
+    const dispatcherView = await dispatcher.get(`/api/v1/incidents/${incident.id}`);
+    const internal = dispatcherView.body.incident.assignments[0];
+    assert.equal(internal.responderId, responderUser.id);
+    assert.ok(internal.assignedById, "dispatcher responses keep the assigning user");
+    assert.equal(internal.assignmentNote, note);
+  });
+
+  it("reports database and cache health for orchestrators", async () => {
+    const response = await request(app).get("/api/v1/health");
+    assert.equal(response.status, 200, response.text);
+    assert.equal(response.body.status, "ok");
+    assert.equal(response.body.database, "connected");
+    assert.ok(
+      ["connected", "unavailable"].includes(response.body.cache),
+      `unexpected cache state: ${response.body.cache}`,
+    );
+  });
+
+  it("lets administrators correct another account's permitted profile fields", async () => {
+    const adminUser = await createUser("ADMIN", "admin@test.local");
+    const target = await createUser("CITIZEN", "target@test.local");
+    const targetAgent = await login("target@test.local");
+    const admin = await login("admin@test.local");
+
+    const updated = await admin
+      .patch(`/api/v1/admin/users/${target.id}/profile`)
+      .send({ fullName: "Corrected Citizen", phone: "+9779812345678" });
+    assert.equal(updated.status, 200, updated.text);
+    assert.equal(updated.body.user.fullName, "Corrected Citizen");
+    assert.equal(updated.body.user.phone, "+9779812345678");
+    assert.equal(updated.body.user.email, "target@test.local");
+    assert.equal(updated.body.user.role.name, "CITIZEN");
+
+    const cleared = await admin
+      .patch(`/api/v1/admin/users/${target.id}/profile`)
+      .send({ phone: null });
+    assert.equal(cleared.status, 200, cleared.text);
+    assert.equal(cleared.body.user.phone, null);
+
+    const noChanges = await admin
+      .patch(`/api/v1/admin/users/${target.id}/profile`)
+      .send({});
+    assert.equal(noChanges.status, 400);
+    assert.equal(noChanges.body.error.code, "NO_CHANGES");
+
+    // Protected fields are not part of this endpoint and are stripped.
+    const probe = await admin
+      .patch(`/api/v1/admin/users/${target.id}/profile`)
+      .send({ email: "hijacked@evil.test", role: "ADMIN" });
+    assert.equal(probe.status, 400);
+    assert.equal(probe.body.error.code, "NO_CHANGES");
+
+    const denied = await targetAgent
+      .patch(`/api/v1/admin/users/${adminUser.id}/profile`)
+      .send({ fullName: "Sneaky Rename" });
+    assert.equal(denied.status, 403);
+
+    const audits = await prisma.auditLog.findMany({
+      where: { action: "admin.user_profile_updated" },
+    });
+    assert.equal(audits.length, 2);
+    const changedFields = audits
+      .map((entry) => (entry.metadata as { fields: string[] }).fields.join(","))
+      .sort();
+    assert.deepEqual(changedFields, ["fullName,phone", "phone"]);
+  });
+
+  it("lets every role update its own profile without touching protected fields", async () => {
+    await request(app).post("/api/v1/auth/register").send({
+      fullName: "Profile Citizen",
+      email: "profile@test.local",
+      password: PASSWORD,
+    });
+    const citizen = await login("profile@test.local");
+
+    const updated = await citizen.patch("/api/v1/auth/me").send({
+      fullName: "Updated Citizen Name",
+      phone: "+9779811111111",
+    });
+    assert.equal(updated.status, 200, updated.text);
+    assert.equal(updated.body.user.fullName, "Updated Citizen Name");
+    assert.equal(updated.body.user.phone, "+9779811111111");
+
+    // Email and role are protected: they are stripped from the payload.
+    const privilegeProbe = await citizen.patch("/api/v1/auth/me").send({
+      fullName: "Updated Citizen Name",
+      email: "hijacked@evil.test",
+      role: "ADMIN",
+    });
+    assert.equal(privilegeProbe.status, 200);
+    assert.equal(privilegeProbe.body.user.email, "profile@test.local");
+    assert.equal(privilegeProbe.body.user.role, "CITIZEN");
+
+    const emptyUpdate = await citizen.patch("/api/v1/auth/me").send({});
+    assert.equal(emptyUpdate.status, 400);
+    assert.equal(emptyUpdate.body.error.code, "NO_CHANGES");
+
+    const tooShort = await citizen.patch("/api/v1/auth/me").send({ fullName: "A" });
+    assert.equal(tooShort.status, 400);
+
+    const profile = await citizen.get("/api/v1/auth/me");
+    assert.equal(profile.body.user.fullName, "Updated Citizen Name");
+
+    const anonymous = await request(app).patch("/api/v1/auth/me").send({ fullName: "Anon Name" });
+    assert.equal(anonymous.status, 401);
+
+    const audits = await prisma.auditLog.findMany({
+      where: { action: "auth.profile_updated" },
+    });
+    assert.equal(audits.length, 2);
+    assert.deepEqual(audits[0]?.metadata, { fields: ["fullName", "phone"] });
+    // The privilege probe writes only the allowed field to the audit trail.
+    assert.deepEqual(audits[1]?.metadata, { fields: ["fullName"] });
   });
 });

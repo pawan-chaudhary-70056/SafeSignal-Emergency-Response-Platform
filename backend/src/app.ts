@@ -2,12 +2,15 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { ZodError } from "zod";
 import { csrfProtection } from "./lib/csrf.js";
 import { AppError } from "./lib/errors.js";
-import { errorBody } from "./lib/http.js";
+import { asyncHandler, errorBody } from "./lib/http.js";
 import { trustProxyValue } from "./lib/network.js";
+import { prisma } from "./lib/prisma.js";
+import { getRedis } from "./lib/redis.js";
 import { adminRouter } from "./modules/admin/admin.routes.js";
 import { assignmentsRouter } from "./modules/assignments/assignments.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { categoriesRouter } from "./modules/categories/categories.routes.js";
+import { evidenceRouter, incidentEvidenceRouter } from "./modules/evidence/evidence.routes.js";
 import { incidentsRouter } from "./modules/incidents/incidents.routes.js";
 import { notificationsRouter } from "./modules/notifications/notifications.routes.js";
 import { respondersRouter } from "./modules/responders/responders.routes.js";
@@ -23,9 +26,37 @@ app.disable("x-powered-by");
 app.use(securityHeaders);
 app.use(express.json({ limit: "100kb" }));
 
-app.get("/api/v1/health", (_req, res) => {
-  res.json({ status: "ok" });
-});
+// NFR-030: report application and dependency health. The database is a hard
+// dependency (503 when unreachable); Redis is optional at runtime, so a Redis
+// problem degrades the report without failing the container healthcheck.
+app.get("/api/v1/health", asyncHandler(async (_req, res) => {
+  // Ping both dependencies: a connected client that cannot answer PING is not
+  // healthy. Redis is optional at runtime, so it degrades the report instead of
+  // failing the container healthcheck.
+  const [database, cache] = await Promise.allSettled([
+    prisma.$queryRaw`SELECT 1`,
+    getRedis().then((client) => (client ? client.ping() : null)),
+  ]);
+
+  const databaseOk = database.status === "fulfilled";
+  const cacheState =
+    cache.status === "fulfilled" && cache.value === "PONG" ? "connected" : "unavailable";
+
+  if (!databaseOk) {
+    res.status(503).json({
+      status: "error",
+      database: "unavailable",
+      cache: cacheState,
+    });
+    return;
+  }
+
+  res.json({
+    status: "ok",
+    database: "connected",
+    cache: cacheState,
+  });
+}));
 
 app.use("/api/v1", corsProtection);
 
@@ -33,7 +64,8 @@ app.use("/api/v1", corsProtection);
 app.use("/api/v1", csrfProtection);
 
 app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/incidents", incidentsRouter);
+app.use("/api/v1/incidents", incidentsRouter, incidentEvidenceRouter);
+app.use("/api/v1/evidence", evidenceRouter);
 app.use("/api/v1/notifications", notificationsRouter);
 app.use("/api/v1/assignments", assignmentsRouter);
 app.use("/api/v1/responders", respondersRouter);
@@ -57,6 +89,14 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
         message: "Invalid request data",
         details: error.issues,
       },
+    });
+    return;
+  }
+
+  // express.raw raises this when an evidence upload passes the hard cap.
+  if (error instanceof Error && error.name === "PayloadTooLargeError") {
+    res.status(413).json({
+      error: { code: "PAYLOAD_TOO_LARGE", message: "The uploaded file is too large" },
     });
     return;
   }

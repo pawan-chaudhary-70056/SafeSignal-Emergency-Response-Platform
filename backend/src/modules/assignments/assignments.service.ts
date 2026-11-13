@@ -2,6 +2,7 @@ import type { IncidentStatus, Prisma } from "@prisma/client";
 import { badRequest, conflict, forbidden, notFound } from "../../lib/errors.js";
 import type { Actor } from "../../lib/http.js";
 import { prisma } from "../../lib/prisma.js";
+import { emitToRole } from "../../realtime/index.js";
 import { publishIncidentEvent } from "../../realtime/publish.js";
 import { assertIncidentTransition } from "../incidents/lifecycle.js";
 
@@ -11,6 +12,28 @@ const activeStatuses = ["PENDING", "ACCEPTED"] as const;
 const assignmentInclude = {
   incident: { include: { category: true } },
 } satisfies Prisma.AssignmentInclude;
+
+async function publishResponderAvailability(
+  responderId: string,
+  availabilityStatus: "AVAILABLE" | "BUSY" | "UNAVAILABLE",
+): Promise<void> {
+  const responder = await prisma.user.findUnique({
+    where: { id: responderId },
+    select: { fullName: true, email: true },
+  });
+
+  if (!responder) {
+    return;
+  }
+
+  emitToRole("DISPATCHER", "responder.availability_updated", {
+    responderId,
+    fullName: responder.fullName,
+    email: responder.email,
+    availabilityStatus,
+    at: new Date().toISOString(),
+  });
+}
 
 async function loadAssignment(assignmentId: string) {
   const assignment = await prisma.assignment.findUnique({
@@ -38,8 +61,20 @@ async function assertEligibleResponder(responderId: string) {
   if (responder.accountStatus !== "ACTIVE") {
     throw badRequest("RESPONDER_INACTIVE", "Responder account is not active");
   }
+}
 
-  if (responder.responderProfile?.availabilityStatus !== "AVAILABLE") {
+/**
+ * Atomically moves a responder from AVAILABLE to BUSY. The guarded update is
+ * the concurrency lock: two dispatchers assigning the same responder cannot
+ * both claim the single AVAILABLE row.
+ */
+async function claimResponder(tx: Prisma.TransactionClient, responderId: string): Promise<void> {
+  const claimed = await tx.responderProfile.updateMany({
+    where: { userId: responderId, availabilityStatus: "AVAILABLE" },
+    data: { availabilityStatus: "BUSY" },
+  });
+
+  if (claimed.count !== 1) {
     throw conflict("RESPONDER_UNAVAILABLE", "Responder is not marked AVAILABLE");
   }
 }
@@ -62,15 +97,29 @@ export async function createAssignment(
 
   await assertEligibleResponder(input.responderId);
 
-  const active = await prisma.assignment.findFirst({
-    where: { incidentId: input.incidentId, status: { in: [...activeStatuses] } },
-  });
-
-  if (active) {
-    throw conflict("ACTIVE_ASSIGNMENT_EXISTS", "This incident already has an active assignment");
-  }
-
   const assignment = await prisma.$transaction(async (tx) => {
+    const active = await tx.assignment.findFirst({
+      where: { incidentId: input.incidentId, status: { in: [...activeStatuses] } },
+      select: { id: true },
+    });
+
+    if (active) {
+      throw conflict("ACTIVE_ASSIGNMENT_EXISTS", "This incident already has an active assignment");
+    }
+
+    // Legacy rows may still be AVAILABLE with an active assignment, so check
+    // before claiming in addition to the availability guard.
+    const responderBusy = await tx.assignment.findFirst({
+      where: { responderId: input.responderId, status: { in: [...activeStatuses] } },
+      select: { id: true },
+    });
+
+    if (responderBusy) {
+      throw conflict("RESPONDER_BUSY", "Responder already has an active assignment");
+    }
+
+    await claimResponder(tx, input.responderId);
+
     const assignment = await tx.assignment.create({
       data: {
         incidentId: input.incidentId,
@@ -117,6 +166,7 @@ export async function createAssignment(
     event: "assignment.created",
     assignmentId: assignment.id,
   });
+  await publishResponderAvailability(input.responderId, "BUSY");
 
   return assignment;
 }
@@ -215,6 +265,13 @@ export async function rejectAssignment(actor: Actor, assignmentId: string, reaso
       data: { status: "VERIFIED" },
     });
 
+    // Rejection frees the responder. Only BUSY is reversed, so a manually set
+    // UNAVAILABLE is preserved.
+    await tx.responderProfile.updateMany({
+      where: { userId: assignment.responderId, availabilityStatus: "BUSY" },
+      data: { availabilityStatus: "AVAILABLE" },
+    });
+
     await tx.incidentStatusHistory.create({
       data: {
         incidentId: assignment.incidentId,
@@ -243,6 +300,7 @@ export async function rejectAssignment(actor: Actor, assignmentId: string, reaso
     event: "assignment.rejected",
     assignmentId,
   });
+  await publishResponderAvailability(rejectedAssignment.responderId, "AVAILABLE");
 
   return rejectedAssignment;
 }
@@ -266,6 +324,8 @@ export async function reassignAssignment(
   await assertEligibleResponder(responderId);
 
   const replacementAssignment = await prisma.$transaction(async (tx) => {
+    await claimResponder(tx, responderId);
+
     const replaced = await tx.assignment.updateMany({
       where: { id: assignmentId, status: current.status },
       data: { status: "REASSIGNED", reassignmentReason: reason },
@@ -274,6 +334,12 @@ export async function reassignAssignment(
     if (replaced.count !== 1) {
       throw conflict("ASSIGNMENT_STATE_CONFLICT", "The assignment changed during reassignment");
     }
+
+    // Release the previous responder when the replacement claim succeeds.
+    await tx.responderProfile.updateMany({
+      where: { userId: current.responderId, availabilityStatus: "BUSY" },
+      data: { availabilityStatus: "AVAILABLE" },
+    });
 
     const replacement = await tx.assignment.create({
       data: {
@@ -377,6 +443,13 @@ export async function updateResponseProgress(
       if (completed.count !== 1) {
         throw conflict("ASSIGNMENT_STATE_CONFLICT", "The assignment changed during resolution");
       }
+
+      // Resolution ends the response, so BUSY responders are freed again. A
+      // manually set UNAVAILABLE is preserved, matching reject and reassign.
+      await tx.responderProfile.updateMany({
+        where: { userId: assignment.responderId, availabilityStatus: "BUSY" },
+        data: { availabilityStatus: "AVAILABLE" },
+      });
     }
 
     await tx.incidentStatusHistory.create({
@@ -409,6 +482,11 @@ export async function updateResponseProgress(
     event: target === "RESOLVED" ? "assignment.completed" : "incident.status_updated",
     assignmentId,
   });
+
+  if (target === "RESOLVED") {
+    // Dispatchers see the freed responder immediately.
+    await publishResponderAvailability(progressAssignment.responderId, "AVAILABLE");
+  }
 
   return progressAssignment;
 }

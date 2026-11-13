@@ -8,6 +8,7 @@ export type RealtimeEvent =
   | "incident.created"
   | "incident.status_updated"
   | "incident.priority_updated"
+  | "incident.evidence_updated"
   | "assignment.created"
   | "assignment.accepted"
   | "assignment.rejected"
@@ -84,6 +85,14 @@ export function emitToUser(userId: string, event: RealtimeEvent, payload: unknow
 
 export function emitToRole(role: RoleCode, event: RealtimeEvent, payload: unknown): void {
   io?.to(`role:${role}`).emit(event, payload);
+}
+
+/**
+ * Drops every live Socket.IO connection for a user. Called when a session is
+ * revoked (logout) or authorization changes (suspension, role change).
+ */
+export function disconnectUser(userId: string): void {
+  io?.in(`user:${userId}`).disconnectSockets(true);
 }
 
 export async function closeRealtime(): Promise<void> {

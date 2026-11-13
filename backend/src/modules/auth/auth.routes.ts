@@ -1,7 +1,8 @@
+import type { NextFunction, Request, Response } from "express";
 import { Router } from "express";
 import { z } from "zod";
 import { clearCsrfToken, issueCsrfToken } from "../../lib/csrf.js";
-import { AppError, conflict } from "../../lib/errors.js";
+import { AppError, badRequest, conflict } from "../../lib/errors.js";
 import { asyncHandler } from "../../lib/http.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
 import { prisma } from "../../lib/prisma.js";
@@ -13,7 +14,8 @@ import {
   sessionTtlMs,
 } from "../../lib/session.js";
 import { authenticate } from "../../middleware/auth.js";
-import { rateLimit } from "../../middleware/rate-limit.js";
+import { multiRateLimit, rateLimit } from "../../middleware/rate-limit.js";
+import { disconnectUser } from "../../realtime/index.js";
 import { identifyRole } from "../roles/index.js";
 
 const emailSchema = z.string().trim().toLowerCase().email().max(255);
@@ -36,6 +38,7 @@ const publicUser = (user: {
   email: string;
   phone: string | null;
   accountStatus: string;
+  createdAt: Date;
   role: { name: string };
 }) => ({
   id: user.id,
@@ -43,6 +46,7 @@ const publicUser = (user: {
   email: user.email,
   phone: user.phone,
   accountStatus: user.accountStatus,
+  createdAt: user.createdAt,
   role: user.role.name,
 });
 
@@ -80,9 +84,33 @@ authRouter.post(
   }),
 );
 
+/**
+ * Login is protected by two buckets, both scoped by client IP:
+ * - Per account (IP + email): 10 attempts / 10 min, so password spraying one
+ *   mailbox stays slow even from one address.
+ * - Per IP: 60 attempts / 10 min, so shared offices, campus networks and full
+ *   E2E suites are not locked out by the account rule alone.
+ */
+function loginRateLimit() {
+  const windowMs = 10 * 60 * 1000;
+
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const email = req.body?.email;
+    const accountBuckets =
+      typeof email === "string" && email.trim().length > 0
+        ? [{ windowMs, max: 10, key: `login-account:${email.trim().toLowerCase().slice(0, 255)}` }]
+        : [];
+
+    multiRateLimit([
+      ...accountBuckets,
+      { windowMs, max: 60, key: "login-ip" },
+    ])(req, res, next);
+  };
+}
+
 authRouter.post(
   "/login",
-  rateLimit({ windowMs: 10 * 60 * 1000, max: 20, key: "login" }),
+  loginRateLimit(),
   asyncHandler(async (req, res) => {
     const body = loginSchema.parse(req.body ?? {});
 
@@ -160,6 +188,59 @@ authRouter.get(
   }),
 );
 
+// FR-005: every role can update the permitted profile fields. The email
+// address, role and password are protected account fields, so only the
+// validated display fields are taken from the request body.
+const profileUpdateSchema = z.object({
+  fullName: z.string().trim().min(2).max(120).optional(),
+  phone: z
+    .union([z.string().trim().min(6).max(30), z.null()])
+    .optional(),
+});
+
+authRouter.patch(
+  "/me",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const actor = req.auth;
+    if (!actor) {
+      throw new AppError(401, "UNAUTHENTICATED", "Authentication required");
+    }
+
+    const body = profileUpdateSchema.parse(req.body ?? {});
+    const changedFields = Object.keys(body);
+
+    if (changedFields.length === 0) {
+      throw badRequest("NO_CHANGES", "No supported profile fields were provided");
+    }
+
+    const user = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: actor.userId },
+        data: {
+          ...(body.fullName !== undefined ? { fullName: body.fullName } : {}),
+          ...(body.phone !== undefined ? { phone: body.phone } : {}),
+        },
+        include: { role: true, responderProfile: true },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.userId,
+          action: "auth.profile_updated",
+          entityType: "User",
+          entityId: actor.userId,
+          metadata: { fields: changedFields },
+        },
+      });
+
+      return updated;
+    });
+
+    res.json({ user: publicUser(user) });
+  }),
+);
+
 authRouter.post(
   "/logout",
   authenticate,
@@ -177,6 +258,11 @@ authRouter.post(
         entityId: req.auth?.sessionId ?? null,
       },
     });
+
+    // Close live dashboard connections tied to the revoked session cookie.
+    if (req.auth?.userId) {
+      disconnectUser(req.auth.userId);
+    }
 
     res.clearCookie(SESSION_COOKIE, { path: "/" });
     clearCsrfToken(res);

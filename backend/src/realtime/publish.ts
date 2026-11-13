@@ -4,7 +4,7 @@ import { emitToRole, emitToUser, type RealtimeEvent } from "./index.js";
 
 type IncidentRealtimeEvent = Exclude<
   RealtimeEvent,
-  "notification.created" | "responder.availability_updated"
+  "notification.created" | "responder.availability_updated" | "incident.evidence_updated"
 >;
 
 interface PublishInput {

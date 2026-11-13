@@ -9,8 +9,10 @@ import { assertIncidentTransition } from "./lifecycle.js";
 export interface CreateIncidentInput {
   categoryId: string;
   description: string;
-  contactInformation?: string;
+  contactInformation: string;
+  idempotencyKey?: string;
   location?: { latitude: number; longitude: number; description?: string };
+  locationDescription?: string;
 }
 
 const incidentInclude = {
@@ -18,65 +20,158 @@ const incidentInclude = {
   assignments: true,
 } satisfies Prisma.IncidentInclude;
 
-export async function createIncident(actor: Actor, input: CreateIncidentInput) {
+type IncidentWithRelations = Prisma.IncidentGetPayload<{ include: typeof incidentInclude }>;
+type AssignmentRecord = IncidentWithRelations["assignments"][number];
+type ViewerAssignment = Pick<
+  AssignmentRecord,
+  "id" | "incidentId" | "status" | "assignedAt"
+>;
+
+/**
+ * A citizen-safe incident carries either the full dispatch assignment or the
+ * reduced projection. Operational roles still receive the full record.
+ */
+type IncidentForViewer<T extends IncidentWithRelations = IncidentWithRelations> = Omit<
+  T,
+  "assignments"
+> & { assignments: Array<AssignmentRecord | ViewerAssignment> };
+
+export interface CreateIncidentResult {
+  incident: IncidentForViewer;
+  replayed: boolean;
+}
+
+/**
+ * FR-035: dispatch assignment notes and responder identities are internal
+ * dispatch information. Citizens receive a minimal projection — enough to show
+ * the assignment count and live status, never the operational details.
+ */
+function sanitizeForViewer<T extends IncidentWithRelations>(
+  actor: Actor,
+  incident: T,
+): IncidentForViewer<T> {
+  if (actor.role !== "CITIZEN") {
+    return incident;
+  }
+
+  return {
+    ...incident,
+    assignments: incident.assignments.map((assignment) => ({
+      id: assignment.id,
+      incidentId: assignment.incidentId,
+      status: assignment.status,
+      assignedAt: assignment.assignedAt,
+    })),
+  };
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === "P2002"
+  );
+}
+
+/**
+ * Replays return the incident created by the first request, so a retried SOS
+ * cannot produce duplicate dispatch work.
+ */
+export async function createIncident(
+  actor: Actor,
+  input: CreateIncidentInput,
+): Promise<CreateIncidentResult> {
+  const idempotencyKey = input.idempotencyKey?.trim() || null;
+
+  if (idempotencyKey) {
+    const existing = await prisma.incident.findUnique({
+      where: { citizenId_idempotencyKey: { citizenId: actor.userId, idempotencyKey } },
+      include: incidentInclude,
+    });
+
+    if (existing) {
+      return { incident: sanitizeForViewer(actor, existing), replayed: true };
+    }
+  }
+
   const category = await prisma.emergencyCategory.findUnique({ where: { id: input.categoryId } });
   if (!category || !category.isActive) {
     throw badRequest("INVALID_CATEGORY", "The selected emergency category is not available");
   }
 
-  const incident = await prisma.$transaction(async (tx) => {
-    // The serial number drives the human readable reference, so it is assigned
-    // first and the reference is filled in inside the same transaction.
-    const created = await tx.incident.create({
-      data: {
-        referenceNumber: `tmp-${randomUUID().slice(0, 20)}`,
-        citizenId: actor.userId,
-        categoryId: input.categoryId,
-        description: input.description,
-        contactInformation: input.contactInformation ?? null,
-        latitude: input.location?.latitude ?? null,
-        longitude: input.location?.longitude ?? null,
-        locationDescription: input.location?.description ?? null,
-      },
+  try {
+    const incident = await prisma.$transaction(async (tx) => {
+      // The serial number drives the human readable reference, so it is assigned
+      // first and the reference is filled in inside the same transaction.
+      const created = await tx.incident.create({
+        data: {
+          referenceNumber: `tmp-${randomUUID().slice(0, 20)}`,
+          citizenId: actor.userId,
+          categoryId: input.categoryId,
+          description: input.description,
+          contactInformation: input.contactInformation,
+          idempotencyKey,
+          latitude: input.location?.latitude ?? null,
+          longitude: input.location?.longitude ?? null,
+          locationDescription:
+            input.locationDescription ?? input.location?.description ?? null,
+        },
+      });
+
+      const referenceNumber = `SS-${created.createdAt.getUTCFullYear()}-${String(
+        created.serialNumber,
+      ).padStart(6, "0")}`;
+
+      const incident = await tx.incident.update({
+        where: { id: created.id },
+        data: { referenceNumber },
+        include: incidentInclude,
+      });
+
+      await tx.incidentStatusHistory.create({
+        data: {
+          incidentId: incident.id,
+          changedById: actor.userId,
+          previousStatus: null,
+          newStatus: "SUBMITTED",
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.userId,
+          action: "incident.created",
+          entityType: "Incident",
+          entityId: incident.id,
+          metadata: { referenceNumber },
+        },
+      });
+
+      return incident;
     });
 
-    const referenceNumber = `SS-${created.createdAt.getUTCFullYear()}-${String(
-      created.serialNumber,
-    ).padStart(6, "0")}`;
-
-    const incident = await tx.incident.update({
-      where: { id: created.id },
-      data: { referenceNumber },
+    await publishIncidentEvent({
+      incidentId: incident.id,
+      event: "incident.created",
     });
 
-    await tx.incidentStatusHistory.create({
-      data: {
-        incidentId: incident.id,
-        changedById: actor.userId,
-        previousStatus: null,
-        newStatus: "SUBMITTED",
-      },
-    });
+    return { incident: sanitizeForViewer(actor, incident), replayed: false };
+  } catch (error) {
+    // Two concurrent retries can both pass the lookup above; the unique index
+    // decides the winner and the loser returns the winner's incident.
+    if (idempotencyKey && isUniqueConstraintError(error)) {
+      const existing = await prisma.incident.findUnique({
+        where: { citizenId_idempotencyKey: { citizenId: actor.userId, idempotencyKey } },
+        include: incidentInclude,
+      });
 
-    await tx.auditLog.create({
-      data: {
-        actorId: actor.userId,
-        action: "incident.created",
-        entityType: "Incident",
-        entityId: incident.id,
-        metadata: { referenceNumber },
-      },
-    });
+      if (existing) {
+        return { incident: sanitizeForViewer(actor, existing), replayed: true };
+      }
+    }
 
-    return incident;
-  });
-
-  await publishIncidentEvent({
-    incidentId: incident.id,
-    event: "incident.created",
-  });
-
-  return incident;
+    throw error;
+  }
 }
 
 /**
@@ -144,7 +239,7 @@ export async function listIncidents(
   ]);
 
   return {
-    incidents,
+    incidents: incidents.map((incident) => sanitizeForViewer(actor, incident)),
     pagination: {
       page,
       limit,
@@ -267,7 +362,7 @@ export async function getIncident(actor: Actor, incidentId: string) {
     throw notFound("Incident not found");
   }
 
-  return incident;
+  return sanitizeForViewer(actor, incident);
 }
 
 interface TransitionOptions {

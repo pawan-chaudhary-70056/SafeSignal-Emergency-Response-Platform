@@ -3,7 +3,7 @@ import { emitToUser, type RealtimeEvent } from "../../realtime/index.js";
 
 type IncidentEvent = Exclude<
   RealtimeEvent,
-  "notification.created" | "responder.availability_updated"
+  "notification.created" | "responder.availability_updated" | "incident.evidence_updated"
 >;
 
 export type NotificationType =
@@ -122,6 +122,47 @@ function recipientsFor(
       return [incident.citizenId, ...dispatchers];
     default:
       return [];
+  }
+}
+
+/**
+ * Evidence notifications go to the opposite side only: a citizen upload tells
+ * dispatchers, a dispatcher upload tells the reporting citizen. Responders are
+ * not notified — they receive their evidence through the assignment.
+ */
+export async function notifyEvidenceAdded(input: {
+  incident: { id: string; referenceNumber: string; citizenId: string };
+  uploader: { id: string; role: string; fullName: string };
+}): Promise<void> {
+  const recipientIds =
+    input.uploader.role === "CITIZEN"
+      ? await dispatcherIds()
+      : [input.incident.citizenId];
+
+  if (recipientIds.length === 0) {
+    return;
+  }
+
+  const created = await prisma.notification.createManyAndReturn({
+    data: recipientIds.map((recipientId) => ({
+      recipientId,
+      type: "EVIDENCE_ADDED",
+      title: "New evidence attached",
+      message: `${input.incident.referenceNumber}: ${input.uploader.fullName} attached supporting evidence.`,
+      entityType: "INCIDENT",
+      entityId: input.incident.id,
+    })),
+    select: { id: true, recipientId: true },
+  });
+
+  for (const row of created) {
+    emitToUser(row.recipientId, "notification.created", {
+      notificationId: row.id,
+      incidentId: input.incident.id,
+      referenceNumber: input.incident.referenceNumber,
+      type: "EVIDENCE_ADDED",
+      title: "New evidence attached",
+    });
   }
 }
 

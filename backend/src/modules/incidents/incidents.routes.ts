@@ -17,18 +17,26 @@ import {
   verifyIncident,
 } from "./incidents.service.js";
 
-const createSchema = z.object({
-  categoryId: z.string().uuid(),
-  description: z.string().trim().min(5).max(2000),
-  contactInformation: z.string().trim().min(6).max(255).optional(),
-  location: z
-    .object({
-      latitude: z.number().min(-90).max(90),
-      longitude: z.number().min(-180).max(180),
-      description: z.string().trim().max(500).optional(),
-    })
-    .optional(),
-});
+const createSchema = z
+  .object({
+    categoryId: z.string().uuid(),
+    description: z.string().trim().min(5).max(2000),
+    contactInformation: z.string().trim().min(6).max(255),
+    location: z
+      .object({
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+        description: z.string().trim().max(500).optional(),
+      })
+      .optional(),
+    locationDescription: z.string().trim().min(3).max(500).optional(),
+  })
+  .refine((value) => Boolean(value.location) || Boolean(value.locationDescription), {
+    message: "Provide coordinates or a clear landmark for the emergency location",
+    path: ["locationDescription"],
+  });
+
+const idempotencyKeySchema = z.string().trim().min(8).max(64);
 
 const listQuerySchema = z.object({
   status: z
@@ -67,8 +75,13 @@ incidentsRouter.post(
   rateLimit({ windowMs: 10 * 60 * 1000, max: 30, key: "incident-create" }),
   asyncHandler(async (req, res) => {
     const body = createSchema.parse(req.body ?? {});
-    const incident = await createIncident(actorFrom(req), body);
-    res.status(201).json({ incident });
+    const rawIdempotencyKey = req.get("Idempotency-Key");
+    const idempotencyKey = rawIdempotencyKey
+      ? idempotencyKeySchema.parse(rawIdempotencyKey)
+      : undefined;
+
+    const result = await createIncident(actorFrom(req), { ...body, idempotencyKey });
+    res.status(result.replayed ? 200 : 201).json(result);
   }),
 );
 

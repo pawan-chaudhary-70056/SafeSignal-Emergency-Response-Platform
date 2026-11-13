@@ -80,6 +80,7 @@ model User {
   statusChanges       IncidentStatusHistory[] @relation("StatusChangedBy")
   receivedAssignments Assignment[]           @relation("AssignedResponder")
   createdAssignments  Assignment[]           @relation("AssignedBy")
+  uploadedEvidence    Evidence[]             @relation("EvidenceUploadedBy")
   auditLogs           AuditLog[]
   notifications       Notification[]
 
@@ -119,6 +120,7 @@ model Incident {
   categoryId          String           @db.Uuid
   description         String
   contactInformation  String?          @db.VarChar(255)
+  idempotencyKey      String?          @db.VarChar(64)
   latitude            Float?
   longitude           Float?
   locationDescription String?          @db.VarChar(500)
@@ -135,10 +137,12 @@ model Incident {
   category      EmergencyCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   statusHistory IncidentStatusHistory[]
   assignments   Assignment[]
+  evidence      Evidence[]
 
   @@index([citizenId, createdAt])
   @@index([status, priority, createdAt])
   @@index([categoryId])
+  @@unique([citizenId, idempotencyKey])
 }
 
 model IncidentStatusHistory {
@@ -192,6 +196,23 @@ model Assignment {
   @@index([incidentId, status])
   @@index([responderId, status])
   @@index([assignedById])
+}
+
+model Evidence {
+  id          String   @id @default(uuid()) @db.Uuid
+  incidentId  String   @db.Uuid
+  uploadedById String  @db.Uuid
+  fileName    String   @db.VarChar(255)
+  mimeType    String   @db.VarChar(100)
+  sizeBytes   Int
+  content     Bytes
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Restrict)
+  uploadedBy User     @relation("EvidenceUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([incidentId, createdAt])
+  @@index([uploadedById])
 }
 
 model AuditLog {
