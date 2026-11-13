@@ -93,7 +93,7 @@ export function NotificationBell() {
           <path d="M10 2a5 5 0 0 0-5 5v2.6c0 .6-.2 1.2-.6 1.7l-.9 1.2c-.5.7 0 1.6.8 1.6h11.4c.8 0 1.3-.9.8-1.6l-.9-1.2a2.8 2.8 0 0 1-.6-1.7V7a5 5 0 0 0-5-5Z" />
           <path d="M8.2 16a2 2 0 0 0 3.6 0H8.2Z" />
         </svg>
-        Alerts
+        <span className="hidden sm:inline">Alerts</span>
         {unread > 0 && (
           <span className="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[11px] font-bold text-white">
             {unread > 9 ? "9+" : unread}

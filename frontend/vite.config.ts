@@ -4,6 +4,17 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Leaflet and React-Leaflet are the largest dependencies and are only
+        // needed on dashboards with maps, so they ship as their own chunk.
+        manualChunks: {
+          leaflet: ["leaflet", "react-leaflet"],
+        },
+      },
+    },
+  },
   server: {
     port: 5174,
     strictPort: true,

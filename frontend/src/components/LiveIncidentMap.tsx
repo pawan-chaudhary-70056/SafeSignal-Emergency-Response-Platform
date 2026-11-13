@@ -66,7 +66,7 @@ function MapFocus({
   return null;
 }
 
-export function LiveIncidentMap() {
+export function LiveIncidentMap({ id = "live-map" }: { id?: string } = {}) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +128,7 @@ export function LiveIncidentMap() {
 
   return (
     <Card
+      id={id}
       title="Live incident map"
       subtitle="Map pins show incident locations. Status and responder progress update in real time."
       action={

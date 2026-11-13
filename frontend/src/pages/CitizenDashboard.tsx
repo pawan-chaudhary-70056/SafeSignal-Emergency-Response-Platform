@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { DashboardHeader } from "../components/DashboardHeader";
+import { IncidentEvidence } from "../components/IncidentEvidence";
 import { IncidentListItem } from "../components/IncidentList";
 import { IncidentReports } from "../components/IncidentReports";
 import { IncidentSummary } from "../components/IncidentSummary";
 import { ListFilters } from "../components/ListFilters";
 import { LiveIncidentMap } from "../components/LiveIncidentMap";
+import { LocationPicker } from "../components/LocationPicker";
+import { ProfileSection } from "../components/ProfileSection";
 import {
   Alert,
   Button,
@@ -77,6 +80,10 @@ export function CitizenDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const locationWatchRef = useRef<number | null>(null);
+  const locationTimerRef = useRef<number | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -107,31 +114,159 @@ export function CitizenDashboard() {
     load().catch((caught) => setError(errorMessage(caught)));
   }, [load]);
 
+  useEffect(
+    () => () => {
+      if (locationWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(locationWatchRef.current);
+      }
+      if (locationTimerRef.current !== null) {
+        window.clearTimeout(locationTimerRef.current);
+      }
+    },
+    [],
+  );
+
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function stopLocationWatch() {
+    if (locationWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(locationWatchRef.current);
+      locationWatchRef.current = null;
+    }
+    if (locationTimerRef.current !== null) {
+      window.clearTimeout(locationTimerRef.current);
+      locationTimerRef.current = null;
+    }
+  }
+
   function useCurrentLocation() {
-    if (!navigator.geolocation) {
-      setLocationStatus("This browser does not support geolocation. Enter coordinates manually.");
+    if (locating) return;
+
+    if (!window.isSecureContext) {
+      setLocationStatus(
+        "Location access requires HTTPS or localhost. Open the app at http://localhost:5174, or use Pick on map.",
+      );
       return;
     }
 
-    setLocationStatus("Requesting your location…");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setForm((current) => ({
-          ...current,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6),
-        }));
-        setLocationStatus("Location captured. You can adjust it before submitting.");
+    if (!navigator.geolocation) {
+      setLocationStatus(
+        "This browser does not support geolocation. Use Pick on map or enter coordinates manually.",
+      );
+      return;
+    }
+
+    stopLocationWatch();
+    setLocating(true);
+    setLocationStatus("Getting your location… the first fix usually arrives within a few seconds.");
+
+    let bestAccuracy = Number.POSITIVE_INFINITY;
+    let gotFix = false;
+    let fallbackStarted = false;
+    let settled = false;
+
+    function capturedMessage(accuracy: number | null): string {
+      return accuracy !== null
+        ? `Location captured (about ${accuracy} m accuracy). You can refine it with Pick on map before submitting.`
+        : "Location captured. You can refine it with Pick on map before submitting.";
+    }
+
+    function finish(message: string) {
+      if (settled) return;
+      settled = true;
+      stopLocationWatch();
+      setLocationStatus(message);
+      setLocating(false);
+    }
+
+    function applyPosition(position: GeolocationPosition, final: boolean) {
+      if (settled) return;
+
+      const rawAccuracy = position.coords.accuracy;
+      const accuracy =
+        Number.isFinite(rawAccuracy) && rawAccuracy > 0 ? Math.round(rawAccuracy) : null;
+
+      // Keep improving: ignore fixes that are less accurate than the best one
+      // already received.
+      if (accuracy !== null && accuracy > bestAccuracy) return;
+      if (accuracy !== null) bestAccuracy = accuracy;
+
+      gotFix = true;
+      setForm((current) => ({
+        ...current,
+        latitude: position.coords.latitude.toFixed(6),
+        longitude: position.coords.longitude.toFixed(6),
+      }));
+
+      if (accuracy === null) {
+        finish(capturedMessage(null));
+        return;
+      }
+
+      if (accuracy <= 25) {
+        finish(`High-accuracy location captured (about ${accuracy} m).`);
+        return;
+      }
+
+      if (final) {
+        finish(capturedMessage(Math.round(bestAccuracy)));
+        return;
+      }
+
+      setLocationStatus(
+        `Location found (about ${accuracy} m accuracy). Refining for a more precise fix…`,
+      );
+    }
+
+    function tryApproximateLocation() {
+      if (settled || gotFix || fallbackStarted) return;
+      fallbackStarted = true;
+      setLocationStatus("Precise GPS fix unavailable. Trying an approximate network location…");
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => applyPosition(position, true),
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            finish(
+              "Location permission is blocked. Allow location access for this site from your browser's address-bar settings, then try again — or use Pick on map.",
+            );
+            return;
+          }
+
+          finish(
+            "Your device could not determine a location. Use Pick on map, enter coordinates manually, or provide a clear landmark.",
+          );
+        },
+        { enableHighAccuracy: false, timeout: 8_000, maximumAge: 300_000 },
+      );
+    }
+
+    locationWatchRef.current = navigator.geolocation.watchPosition(
+      (position) => applyPosition(position, false),
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          finish(
+            "Location permission is blocked. Allow location access for this site from your browser's address-bar settings, then try again — or use Pick on map.",
+          );
+          return;
+        }
+
+        tryApproximateLocation();
       },
-      () => {
-        setLocationStatus("Location permission denied. Enter coordinates manually.");
-      },
-      { enableHighAccuracy: true, timeout: 10_000 },
+      { enableHighAccuracy: true, timeout: 8_000, maximumAge: 0 },
     );
+
+    // Stop watching quickly: return the first usable fix and keep the UI fast
+    // instead of waiting a long time for GPS to improve.
+    locationTimerRef.current = window.setTimeout(() => {
+      if (gotFix) {
+        finish(capturedMessage(Number.isFinite(bestAccuracy) ? Math.round(bestAccuracy) : null));
+      } else {
+        tryApproximateLocation();
+      }
+    }, 5_000);
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -149,6 +284,16 @@ export function CitizenDashboard() {
       return;
     }
 
+    if (!form.latitude && !form.longitude && !form.locationDescription.trim()) {
+      setError("Provide coordinates or a clear landmark for the emergency location.");
+      return;
+    }
+
+    if (form.contactInformation.trim().length < 6) {
+      setError("Add a contact number so responders can reach you.");
+      return;
+    }
+
     setBusy(true);
     try {
       const response = await api<{ incident: Incident }>("/incidents", {
@@ -156,9 +301,7 @@ export function CitizenDashboard() {
         body: JSON.stringify({
           categoryId: form.categoryId,
           description: form.description,
-          ...(form.contactInformation.trim()
-            ? { contactInformation: form.contactInformation.trim() }
-            : {}),
+          contactInformation: form.contactInformation.trim(),
           ...(form.latitude && form.longitude
             ? {
                 location: {
@@ -169,7 +312,7 @@ export function CitizenDashboard() {
                     : {}),
                 },
               }
-            : {}),
+            : { locationDescription: form.locationDescription.trim() }),
         }),
       });
 
@@ -211,11 +354,12 @@ export function CitizenDashboard() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader role="CITIZEN" />
+      <DashboardHeader role="CITIZEN" id="overview" />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <Card
+          id="report"
           title="Report an emergency"
           subtitle="Provide what you can — location can be captured automatically or entered manually."
         >
@@ -247,9 +391,12 @@ export function CitizenDashboard() {
               />
             </Field>
 
-            <Field label="Contact number" hint="Optional, but helps responders reach you.">
+            <Field label="Contact number" hint="Required, so responders can reach you.">
               <input
                 className={inputClass}
+                required
+                minLength={6}
+                maxLength={255}
                 value={form.contactInformation}
                 onChange={(event) => update("contactInformation", event.target.value)}
                 placeholder="+9779800000000"
@@ -262,9 +409,24 @@ export function CitizenDashboard() {
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Emergency location</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Coordinates or a clear landmark.</p>
                 </div>
-                <Button type="button" variant="ghost" onClick={useCurrentLocation}>
-                  Use my current location
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setMapPickerOpen((open) => !open)}
+                    aria-expanded={mapPickerOpen}
+                  >
+                    {mapPickerOpen ? "Hide map picker" : "Pick on map"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={useCurrentLocation}
+                    disabled={locating}
+                  >
+                    {locating ? "Locating…" : "Use my current location"}
+                  </Button>
+                </div>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -288,6 +450,21 @@ export function CitizenDashboard() {
                 </Field>
               </div>
 
+              {mapPickerOpen && (
+                <LocationPicker
+                  latitude={form.latitude}
+                  longitude={form.longitude}
+                  onPick={(latitude, longitude) => {
+                    update("latitude", latitude);
+                    update("longitude", longitude);
+                    setLocationStatus(
+                      "Location set from the map. Adjust the pin or coordinates before submitting.",
+                    );
+                  }}
+                  onClose={() => setMapPickerOpen(false)}
+                />
+              )}
+
               <div className="mt-3">
                 <Field label="Landmark or location description">
                   <input
@@ -300,8 +477,35 @@ export function CitizenDashboard() {
               </div>
 
               {locationStatus && (
-                <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">{locationStatus}</p>
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400"
+                >
+                  {locationStatus}
+                </p>
               )}
+
+              <details className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                <summary className="cursor-pointer font-semibold text-slate-600 transition hover:text-slate-800 dark:text-slate-300 dark:hover:text-white">
+                  Location not working?
+                </summary>
+                <ul className="mt-2 list-disc space-y-1 pl-4 leading-relaxed">
+                  <li>
+                    Allow location access for this site from your browser&apos;s address-bar
+                    settings.
+                  </li>
+                  <li>
+                    Open SafeSignal through <code>http://localhost:5174</code> or an HTTPS
+                    address. Browsers block location on plain HTTP network addresses.
+                  </li>
+                  <li>Make sure location services are enabled on your device.</li>
+                  <li>
+                    If it still fails, use the <strong>Pick on map</strong> button, enter the
+                    latitude and longitude manually, or provide a clear landmark.
+                  </li>
+                </ul>
+              </details>
             </div>
 
             {error && <Alert tone="error" message={error} />}
@@ -319,8 +523,9 @@ export function CitizenDashboard() {
         </Card>
       </div>
 
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <Card
+          id="incidents"
           title="My incidents"
           subtitle="Status updates appear here as dispatchers and responders act."
           action={
@@ -411,6 +616,8 @@ export function CitizenDashboard() {
                 <Alert tone="success" message={`Resolution: ${selected.resolutionNotes}`} />
               )}
 
+              <IncidentEvidence incident={selected} canUpload canDelete />
+
               <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Status history
@@ -453,8 +660,9 @@ export function CitizenDashboard() {
         )}
       </div>
       </div>
-      <LiveIncidentMap />
-      <IncidentReports />
+      <LiveIncidentMap id="map" />
+      <IncidentReports id="reports" />
+      <ProfileSection id="profile" />
     </div>
   );
 }

@@ -14,6 +14,7 @@ export const REALTIME_EVENTS = [
   "incident.created",
   "incident.status_updated",
   "incident.priority_updated",
+  "incident.evidence_updated",
   "assignment.created",
   "assignment.accepted",
   "assignment.rejected",
@@ -27,6 +28,7 @@ const eventLabels: Record<string, string> = {
   "incident.created": "New incident submitted",
   "incident.status_updated": "Incident status updated",
   "incident.priority_updated": "Incident priority changed",
+  "incident.evidence_updated": "Incident evidence updated",
   "assignment.created": "New responder assignment",
   "assignment.accepted": "Assignment accepted by responder",
   "assignment.rejected": "Assignment rejected by responder",
@@ -94,34 +96,53 @@ export function useRealtime(onEvent: () => void): RealtimeState {
   const handlerRef = useRef(onEvent);
   handlerRef.current = onEvent;
   const clearTimerRef = useRef<number | null>(null);
+  const hasConnectedRef = useRef(false);
 
   useEffect(() => {
     if (!socket) {
       return;
     }
 
+    hasConnectedRef.current = socket.connected;
+
+    function showNotice(message: string) {
+      setLastEvent(message);
+
+      if (clearTimerRef.current !== null) {
+        window.clearTimeout(clearTimerRef.current);
+      }
+      clearTimerRef.current = window.setTimeout(() => {
+        setLastEvent(null);
+        clearTimerRef.current = null;
+      }, 4000);
+    }
+
     const listeners = REALTIME_EVENTS.map((event) => {
       const listener = () => {
         handlerRef.current();
-        setLastEvent(eventLabels[event] ?? "New update");
-
-        if (clearTimerRef.current !== null) {
-          window.clearTimeout(clearTimerRef.current);
-        }
-        clearTimerRef.current = window.setTimeout(() => {
-          setLastEvent(null);
-          clearTimerRef.current = null;
-        }, 4000);
+        showNotice(eventLabels[event] ?? "New update");
       };
 
       socket.on(event, listener);
       return { event, listener };
     });
 
+    // FR-066 / NFR-026: events missed while the socket was down are not
+    // replayed, so every reconnection fetches the persisted state over REST.
+    const handleConnect = () => {
+      if (hasConnectedRef.current) {
+        handlerRef.current();
+        showNotice("Reconnected — refreshed the latest data");
+      }
+      hasConnectedRef.current = true;
+    };
+    socket.on("connect", handleConnect);
+
     return () => {
       for (const { event, listener } of listeners) {
         socket.off(event, listener);
       }
+      socket.off("connect", handleConnect);
       if (clearTimerRef.current !== null) {
         window.clearTimeout(clearTimerRef.current);
       }

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { DashboardHeader } from "../components/DashboardHeader";
+import { IncidentEvidence } from "../components/IncidentEvidence";
 import { IncidentListItem } from "../components/IncidentList";
 import { IncidentReports } from "../components/IncidentReports";
 import { IncidentSummary } from "../components/IncidentSummary";
 import { ListFilters } from "../components/ListFilters";
 import { LiveIncidentMap } from "../components/LiveIncidentMap";
+import { ProfileSection } from "../components/ProfileSection";
 import {
   Alert,
   Avatar,
@@ -156,10 +158,11 @@ export function DispatcherDashboard() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader role="DISPATCHER" />
+      <DashboardHeader role="DISPATCHER" id="overview" />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
       <Card
+        id="queue"
         title="Incident queue"
         subtitle="Review submitted reports, verify them, and move them into dispatch."
         action={
@@ -237,7 +240,7 @@ export function DispatcherDashboard() {
         {pagination && <PaginationControls pagination={pagination} onChange={setPage} />}
       </Card>
 
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         {selected ? (
           <Card
             title={`Incident ${selected.referenceNumber}`}
@@ -521,6 +524,8 @@ export function DispatcherDashboard() {
                   </ol>
                 </div>
               )}
+
+              <IncidentEvidence incident={selected} canUpload canDelete />
             </div>
           </Card>
         ) : (
@@ -529,7 +534,7 @@ export function DispatcherDashboard() {
           </Card>
         )}
 
-        <Card title="Available responders" subtitle="Updated after each refresh.">
+        <Card id="responders" title="Available responders" subtitle="Updated after each refresh.">
           {responders.length === 0 ? (
             <EmptyState message="No responders are currently available." />
           ) : (
@@ -556,8 +561,9 @@ export function DispatcherDashboard() {
         </Card>
       </div>
       </div>
-      <LiveIncidentMap />
-      <IncidentReports />
+      <LiveIncidentMap id="map" />
+      <IncidentReports id="reports" />
+      <ProfileSection id="profile" />
     </div>
   );
 }

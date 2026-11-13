@@ -106,12 +106,38 @@ html {
   }
 }
 
+@keyframes ss-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes ss-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .animate-page-in {
   animation: ss-page-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-header-in {
   animation: ss-header-in 0.4s ease-out both;
+}
+
+.animate-drawer-in {
+  animation: ss-drawer-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-overlay-in {
+  animation: ss-overlay-in 0.2s ease-out both;
 }
 
 .text-aurora {
@@ -132,6 +158,8 @@ html {
   .animate-fade-in,
   .animate-page-in,
   .animate-header-in,
+  .animate-drawer-in,
+  .animate-overlay-in,
   .animate-float-slow,
   .animate-float-slower,
   .animate-ping-slow,

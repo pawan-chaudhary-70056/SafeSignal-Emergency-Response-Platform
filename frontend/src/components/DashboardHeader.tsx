@@ -84,13 +84,22 @@ const themes: Record<Role, RoleTheme> = {
   },
 };
 
-export function DashboardHeader({ role, meta }: { role: Role; meta?: ReactNode }) {
+export function DashboardHeader({
+  role,
+  meta,
+  id = "workspace-overview",
+}: {
+  role: Role;
+  meta?: ReactNode;
+  id?: string;
+}) {
   const theme = themes[role];
 
   return (
     <section
+      id={id}
       aria-labelledby="workspace-heading"
-      className={`relative overflow-hidden rounded-3xl border p-5 shadow-sm sm:p-7 ${theme.shell}`}
+      className={`relative scroll-mt-24 overflow-hidden rounded-3xl border p-5 shadow-sm sm:p-7 ${theme.shell}`}
     >
       <div
         aria-hidden

@@ -2,18 +2,23 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import type { IncidentStatus, Pagination } from "../lib/types";
 
 export function Card({
+  id,
   title,
   subtitle,
   action,
   children,
 }: {
+  id?: string;
   title?: string;
   subtitle?: string;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section
+      id={id}
+      className="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+    >
       {(title || action) && (
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6 dark:border-slate-800">
           <div className="min-w-0">
@@ -173,6 +178,31 @@ export function Field({
 
 export const inputClass =
   "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/10 dark:disabled:bg-slate-800 dark:disabled:text-slate-500";
+
+export const tableHeadRowClass =
+  "border-b border-slate-200 bg-slate-50/80 text-left text-[11px] uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-400";
+
+export const tableHeadCellClass = "px-3 py-2.5 font-semibold";
+export const tableCellClass = "px-3 py-3 align-middle";
+
+export function TableShell({
+  label,
+  minWidth = "44rem",
+  children,
+}: {
+  label: string;
+  minWidth?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+      <table className="w-full text-left text-sm" style={{ minWidth }}>
+        <caption className="sr-only">{label}</caption>
+        {children}
+      </table>
+    </div>
+  );
+}
 
 export function Alert({ tone, message }: { tone: "error" | "success"; message: string }) {
   const styles =

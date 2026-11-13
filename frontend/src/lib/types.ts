@@ -21,6 +21,7 @@ export type NotificationType =
   | "INCIDENT_SUBMITTED"
   | "INCIDENT_STATUS_UPDATED"
   | "INCIDENT_PRIORITY_UPDATED"
+  | "EVIDENCE_ADDED"
   | "ASSIGNMENT_CREATED"
   | "ASSIGNMENT_ACCEPTED"
   | "ASSIGNMENT_REJECTED"
@@ -33,6 +34,7 @@ export interface User {
   email: string;
   phone: string | null;
   accountStatus: string;
+  createdAt: string;
   role: Role;
 }
 
@@ -74,6 +76,16 @@ export interface Assignment {
   rejectionReason: string | null;
   assignedAt: string;
   incident: Incident;
+}
+
+export interface Evidence {
+  id: string;
+  incidentId: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+  uploadedBy: { id: string; fullName: string };
 }
 
 export interface Incident {

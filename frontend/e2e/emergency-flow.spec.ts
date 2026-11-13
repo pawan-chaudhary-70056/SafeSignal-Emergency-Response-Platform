@@ -138,6 +138,10 @@ test("dispatcher reassigns an active assignment and history keeps the reason", a
   try {
     await signIn(citizen, "citizen@safesignal.local");
     await citizen.getByLabel(/What is happening/).fill(reassignDescription);
+    await citizen.getByLabel(/Contact number/).fill("+9779800000000");
+    await citizen
+      .getByLabel(/Landmark or location description/)
+      .fill("Primary school side gate");
     await citizen.getByRole("button", { name: "Submit emergency report" }).click();
     await expect(citizen.getByText(/Emergency report submitted\. Reference: /)).toBeVisible();
 
@@ -201,6 +205,27 @@ test("dispatcher reassigns an active assignment and history keeps the reason", a
     await expect(
       assignmentCard.getByRole("button", { name: "Accept assignment" }),
     ).toBeVisible();
+
+    // Walk the assignment through the response stages and close it, so reruns
+    // of the suite start with both demo responders free of active assignments.
+    await assignmentCard.getByRole("button", { name: "Accept assignment" }).click();
+    await assignmentCard.getByRole("button", { name: "Start en route" }).click();
+    await assignmentCard.getByRole("button", { name: "Mark arrived" }).click();
+    await assignmentCard.getByRole("button", { name: "Assistance in progress" }).click();
+    await assignmentCard
+      .getByLabel(/Resolution notes/)
+      .fill("Gas leak isolated and handed over to the fire crew.");
+    await assignmentCard.getByRole("button", { name: "Mark resolved" }).click();
+    await expect(assignmentCard.getByText("Response completed")).toBeVisible();
+
+    await dispatcher.getByRole("button", { name: "Resolved", exact: true }).click();
+    const reassignResolvedItem = dispatcher
+      .getByRole("button")
+      .filter({ hasText: reassignDescription });
+    await expect(reassignResolvedItem).toBeVisible();
+    await reassignResolvedItem.click();
+    await dispatcher.getByRole("button", { name: "Review and close incident" }).click();
+    await expect(dispatcher.getByText("Incident closed and recorded in history.")).toBeVisible();
   } finally {
     await Promise.all([
       citizenContext.close(),

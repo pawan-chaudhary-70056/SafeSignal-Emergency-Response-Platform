@@ -21,7 +21,7 @@ function csvCell(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-export function IncidentReports() {
+export function IncidentReports({ id = "incident-reports" }: { id?: string } = {}) {
   const [stats, setStats] = useState<IncidentStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,6 +101,7 @@ export function IncidentReports() {
 
   return (
     <Card
+      id={id}
       title="Incident reports"
       subtitle="Role-scoped statistics, resolution time and a downloadable report."
       action={

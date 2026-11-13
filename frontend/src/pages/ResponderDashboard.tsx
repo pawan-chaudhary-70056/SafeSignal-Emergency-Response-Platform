@@ -145,13 +145,14 @@ export function ResponderDashboard() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader role="RESPONDER" />
+      <DashboardHeader role="RESPONDER" id="overview" />
 
       {error && <Alert tone="error" message={error} />}
       {notice && <Alert tone="success" message={notice} />}
       {lastEvent && <Alert tone="success" message={lastEvent} />}
 
       <Card
+        id="profile"
         title="My profile"
         subtitle="Dispatch filters responders by availability, so keep it current."
         action={<LiveBadge connected={connected} />}
@@ -236,6 +237,7 @@ export function ResponderDashboard() {
       </Card>
 
       <Card
+        id="assignments"
         title="My assignments"
         subtitle="Accept an assignment first, then report each response stage as it happens."
         action={
@@ -278,8 +280,8 @@ export function ResponderDashboard() {
         </div>
       </Card>
 
-      <LiveIncidentMap />
-      <IncidentReports />
+      <LiveIncidentMap id="map" />
+      <IncidentReports id="reports" />
     </div>
   );
 }
