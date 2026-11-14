@@ -159,7 +159,10 @@ export function IncidentReports({ id = "incident-reports" }: { id?: string } = {
               </h3>
               <ul className="mt-2 space-y-2">
                 {stats.byStatus.map((row) => (
-                  <li key={row.status} className="grid grid-cols-[7.5rem_1fr_2.5rem] items-center gap-2">
+                  <li
+                    key={row.status}
+                    className="grid grid-cols-[7.5rem_1fr_2.5rem] items-center gap-2"
+                  >
                     <span className="truncate text-xs font-medium text-slate-600 dark:text-slate-400">
                       {row.status.replace(/_/g, " ")}
                     </span>

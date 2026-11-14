@@ -79,12 +79,7 @@ export function IncidentListItem({
               ·
             </span>
             <span className="inline-flex min-w-0 items-center gap-1">
-              <svg
-                aria-hidden
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-3 w-3 shrink-0"
-              >
+              <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 shrink-0">
                 <path
                   fillRule="evenodd"
                   d="M10 2.5c-3 0-5.5 2.4-5.5 5.4 0 3.9 4.5 8.6 4.7 8.8a1.1 1.1 0 0 0 1.6 0c.2-.2 4.7-4.9 4.7-8.8 0-3-2.5-5.4-5.5-5.4Zm0 7.6a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4Z"

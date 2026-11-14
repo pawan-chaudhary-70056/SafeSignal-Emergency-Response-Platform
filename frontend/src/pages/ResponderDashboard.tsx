@@ -324,7 +324,9 @@ function AssignmentCard({
           : "border-l-sky-400";
 
   return (
-    <article className={`rounded-xl border border-slate-200 dark:border-slate-800 border-l-4 bg-white dark:bg-slate-900 p-4 ${accent}`}>
+    <article
+      className={`rounded-xl border border-slate-200 dark:border-slate-800 border-l-4 bg-white dark:bg-slate-900 p-4 ${accent}`}
+    >
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-mono text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -342,16 +344,22 @@ function AssignmentCard({
         </div>
       </header>
 
-      <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{incident.description}</p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+        {incident.description}
+      </p>
 
       <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
         <div className="rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2">
           <dt className="font-semibold text-slate-500 dark:text-slate-400">Priority</dt>
-          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{incident.priority}</dd>
+          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
+            {incident.priority}
+          </dd>
         </div>
         <div className="rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2">
           <dt className="font-semibold text-slate-500 dark:text-slate-400">Assigned</dt>
-          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{formatDate(assignment.assignedAt)}</dd>
+          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
+            {formatDate(assignment.assignedAt)}
+          </dd>
         </div>
         <div className="rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2">
           <dt className="font-semibold text-slate-500 dark:text-slate-400">Contact</dt>

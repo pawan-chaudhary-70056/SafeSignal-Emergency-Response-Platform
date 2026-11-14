@@ -87,9 +87,17 @@ const roles = [
 
 const steps = [
   { step: "01", title: "Citizen reports", body: "Category, description, contact, and location." },
-  { step: "02", title: "Dispatcher verifies", body: "Review, set priority, then verify or reject." },
+  {
+    step: "02",
+    title: "Dispatcher verifies",
+    body: "Review, set priority, then verify or reject.",
+  },
   { step: "03", title: "Responder acts", body: "Accept, move en route, arrive, and resolve." },
-  { step: "04", title: "Incident closes", body: "Dispatch reviews the outcome and records closure." },
+  {
+    step: "04",
+    title: "Incident closes",
+    body: "Dispatch reviews the outcome and records closure.",
+  },
 ];
 
 const coreFeatures: Array<{ title: string; body: string; icon: ReactNode }> = [
@@ -193,7 +201,9 @@ export function HomePage({
               </svg>
             </span>
             <div>
-              <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">SafeSignal</p>
+              <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                SafeSignal
+              </p>
               <p className="hidden text-xs text-slate-600 dark:text-slate-400 sm:block">
                 Emergency response coordination
               </p>
@@ -291,12 +301,15 @@ export function HomePage({
                 className="mt-5 animate-fade-up text-xs leading-relaxed text-slate-600 dark:text-slate-400"
                 style={{ animationDelay: "400ms" }}
               >
-                For immediate danger, always call your local emergency number. SafeSignal coordinates
-                the response — it does not replace official services.
+                For immediate danger, always call your local emergency number. SafeSignal
+                coordinates the response — it does not replace official services.
               </p>
             </div>
 
-            <div className="relative mx-auto w-full max-w-lg animate-fade-up" style={{ animationDelay: "220ms" }}>
+            <div
+              className="relative mx-auto w-full max-w-lg animate-fade-up"
+              style={{ animationDelay: "220ms" }}
+            >
               <div
                 aria-hidden
                 className="pointer-events-none absolute -right-10 -top-10 h-64 w-64 rounded-full bg-emerald-400/25 blur-3xl animate-float-slow"
@@ -313,7 +326,9 @@ export function HomePage({
                       <p className="font-mono text-[11px] font-medium text-slate-500 dark:text-slate-400">
                         SS-2026-000042
                       </p>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Fire Emergency</p>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        Fire Emergency
+                      </p>
                     </div>
                     <StatusBadge status="EN_ROUTE" />
                   </div>
@@ -321,13 +336,21 @@ export function HomePage({
                   <ol className="mt-4 space-y-4 border-l border-slate-200 dark:border-slate-800 pl-4">
                     <li className="relative">
                       <span className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50 dark:ring-emerald-500/20" />
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Report received</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">10:42 · Citizen</p>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Report received
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        10:42 · Citizen
+                      </p>
                     </li>
                     <li className="relative">
                       <span className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50 dark:ring-emerald-500/20" />
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Verified by dispatch</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">10:44 · Priority HIGH</p>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Verified by dispatch
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        10:44 · Priority HIGH
+                      </p>
                     </li>
                     <li className="relative">
                       <span className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-sky-500 ring-4 ring-sky-50 dark:ring-sky-500/20" />
@@ -335,15 +358,21 @@ export function HomePage({
                         aria-hidden
                         className="absolute -left-[23px] top-0.5 h-4 w-4 animate-ping-slow rounded-full bg-sky-400/40"
                       />
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Ambulance en route</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">10:46 · ETA 6 min</p>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Ambulance en route
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        10:46 · ETA 6 min
+                      </p>
                     </li>
                   </ol>
 
                   <div className="mt-4 flex items-center gap-3 rounded-xl bg-slate-50 dark:bg-slate-950 p-3">
                     <Avatar name="Bishal Karki" className="h-9 w-9" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">Bishal Karki</p>
+                      <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Bishal Karki
+                      </p>
                       <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
                         AMBULANCE · Kathmandu unit
                       </p>
@@ -360,8 +389,12 @@ export function HomePage({
                   <CheckIcon className="h-3.5 w-3.5" />
                 </span>
                 <div>
-                  <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-200">Response confirmed</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">Responder accepted · 10:47</p>
+                  <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-200">
+                    Response confirmed
+                  </p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Responder accepted · 10:47
+                  </p>
                 </div>
               </div>
             </div>
@@ -439,7 +472,9 @@ export function HomePage({
                     <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
                       {role.title}
                     </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{role.body}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                      {role.body}
+                    </p>
                     <ul className="mt-4 space-y-1.5">
                       {role.points.map((point) => (
                         <li
@@ -476,9 +511,15 @@ export function HomePage({
             {steps.map((item, index) => (
               <Reveal key={item.step} delay={index * 80}>
                 <li className="group h-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 transition duration-300 hover:-translate-y-1 hover:border-emerald-200 dark:hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-900/5">
-                  <p className="text-xs font-bold tracking-wide text-emerald-700 dark:text-emerald-400">{item.step}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{item.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">{item.body}</p>
+                  <p className="text-xs font-bold tracking-wide text-emerald-700 dark:text-emerald-400">
+                    {item.step}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                    {item.body}
+                  </p>
                   <span className="mt-4 block h-0.5 w-8 rounded-full bg-emerald-500/30 transition-all duration-300 group-hover:w-14 group-hover:bg-emerald-500" />
                 </li>
               </Reveal>
@@ -543,7 +584,9 @@ export function HomePage({
             SafeSignal coordinates reporting and response. It does not replace official emergency
             numbers.
           </p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">Emergency response platform · Demo build</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Emergency response platform · Demo build
+          </p>
         </div>
       </footer>
     </div>

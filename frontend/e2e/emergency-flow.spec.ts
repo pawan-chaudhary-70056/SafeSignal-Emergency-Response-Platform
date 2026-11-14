@@ -139,9 +139,7 @@ test("dispatcher reassigns an active assignment and history keeps the reason", a
     await signIn(citizen, "citizen@safesignal.local");
     await citizen.getByLabel(/What is happening/).fill(reassignDescription);
     await citizen.getByLabel(/Contact number/).fill("+9779800000000");
-    await citizen
-      .getByLabel(/Landmark or location description/)
-      .fill("Primary school side gate");
+    await citizen.getByLabel(/Landmark or location description/).fill("Primary school side gate");
     await citizen.getByRole("button", { name: "Submit emergency report" }).click();
     await expect(citizen.getByText(/Emergency report submitted\. Reference: /)).toBeVisible();
 
@@ -198,13 +196,9 @@ test("dispatcher reassigns an active assignment and history keeps the reason", a
 
     // The replacement responder receives the pending assignment.
     await signIn(newResponder, "responder@safesignal.local");
-    const assignmentCard = newResponder
-      .locator("article")
-      .filter({ hasText: reassignDescription });
+    const assignmentCard = newResponder.locator("article").filter({ hasText: reassignDescription });
     await expect(assignmentCard).toBeVisible();
-    await expect(
-      assignmentCard.getByRole("button", { name: "Accept assignment" }),
-    ).toBeVisible();
+    await expect(assignmentCard.getByRole("button", { name: "Accept assignment" })).toBeVisible();
 
     // Walk the assignment through the response stages and close it, so reruns
     // of the suite start with both demo responders free of active assignments.

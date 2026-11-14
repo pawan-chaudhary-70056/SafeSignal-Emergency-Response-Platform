@@ -148,7 +148,8 @@ export function IncidentEvidence({ incident, canUpload, canDelete }: IncidentEvi
       </div>
 
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-        JPEG, PNG, WebP or PDF · up to 5 MB · stored privately and shared only with the response team.
+        JPEG, PNG, WebP or PDF · up to 5 MB · stored privately and shared only with the response
+        team.
       </p>
 
       {notice && (
@@ -165,9 +166,7 @@ export function IncidentEvidence({ incident, canUpload, canDelete }: IncidentEvi
       {evidence === null ? (
         <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Loading evidence…</p>
       ) : evidence.length === 0 ? (
-        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-          No evidence attached yet.
-        </p>
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">No evidence attached yet.</p>
       ) : (
         <ul className="mt-3 space-y-2">
           {evidence.map((item) => (
@@ -183,7 +182,8 @@ export function IncidentEvidence({ incident, canUpload, canDelete }: IncidentEvi
                   {item.fileName}
                 </p>
                 <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-                  {formatBytes(item.sizeBytes)} · {formatDate(item.createdAt)} · {item.uploadedBy.fullName}
+                  {formatBytes(item.sizeBytes)} · {formatDate(item.createdAt)} ·{" "}
+                  {item.uploadedBy.fullName}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">

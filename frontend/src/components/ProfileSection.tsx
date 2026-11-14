@@ -64,17 +64,15 @@ export function ProfileSection({ id }: { id: string }) {
   }
 
   return (
-    <Card
-      id={id}
-      title="My profile"
-      subtitle="Your account identity used across SafeSignal."
-    >
+    <Card id={id} title="My profile" subtitle="Your account identity used across SafeSignal.">
       <div className="mb-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm dark:border-slate-800 dark:bg-slate-900/40 sm:grid-cols-2">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Email
           </p>
-          <p className="mt-0.5 truncate font-medium text-slate-800 dark:text-slate-200">{user.email}</p>
+          <p className="mt-0.5 truncate font-medium text-slate-800 dark:text-slate-200">
+            {user.email}
+          </p>
         </div>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -88,7 +86,9 @@ export function ProfileSection({ id }: { id: string }) {
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Member since
           </p>
-          <p className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{formatDate(user.createdAt)}</p>
+          <p className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
+            {formatDate(user.createdAt)}
+          </p>
         </div>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -102,7 +102,10 @@ export function ProfileSection({ id }: { id: string }) {
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="profile-full-name" className="mb-1.5 block text-sm font-semibold text-slate-800 dark:text-slate-200">
+          <label
+            htmlFor="profile-full-name"
+            className="mb-1.5 block text-sm font-semibold text-slate-800 dark:text-slate-200"
+          >
             Full name
           </label>
           <input
@@ -118,7 +121,10 @@ export function ProfileSection({ id }: { id: string }) {
         </div>
 
         <div>
-          <label htmlFor="profile-phone" className="mb-1.5 block text-sm font-semibold text-slate-800 dark:text-slate-200">
+          <label
+            htmlFor="profile-phone"
+            className="mb-1.5 block text-sm font-semibold text-slate-800 dark:text-slate-200"
+          >
             Phone number
           </label>
           <input

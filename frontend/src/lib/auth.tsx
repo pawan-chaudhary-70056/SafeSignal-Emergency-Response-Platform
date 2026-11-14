@@ -60,17 +60,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const updateProfile = useCallback(
-    async (input: { fullName: string; phone: string | null }) => {
-      const data = await api<{ user: User }>("/auth/me", {
-        method: "PATCH",
-        body: JSON.stringify(input),
-      });
-      setUser(data.user);
-      return data.user;
-    },
-    [],
-  );
+  const updateProfile = useCallback(async (input: { fullName: string; phone: string | null }) => {
+    const data = await api<{ user: User }>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+    setUser(data.user);
+    return data.user;
+  }, []);
 
   const logout = useCallback(async () => {
     try {

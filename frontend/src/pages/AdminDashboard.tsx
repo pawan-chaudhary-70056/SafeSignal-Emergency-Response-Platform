@@ -267,9 +267,7 @@ export function AdminDashboard() {
               <input
                 className={inputClass}
                 value={createForm.fullName}
-                onChange={(event) =>
-                  setCreateForm({ ...createForm, fullName: event.target.value })
-                }
+                onChange={(event) => setCreateForm({ ...createForm, fullName: event.target.value })}
                 required
                 minLength={2}
                 maxLength={120}
@@ -281,9 +279,7 @@ export function AdminDashboard() {
                 className={inputClass}
                 type="email"
                 value={createForm.email}
-                onChange={(event) =>
-                  setCreateForm({ ...createForm, email: event.target.value })
-                }
+                onChange={(event) => setCreateForm({ ...createForm, email: event.target.value })}
                 required
                 maxLength={255}
                 autoComplete="email"
@@ -294,9 +290,7 @@ export function AdminDashboard() {
                 className={inputClass}
                 type="password"
                 value={createForm.password}
-                onChange={(event) =>
-                  setCreateForm({ ...createForm, password: event.target.value })
-                }
+                onChange={(event) => setCreateForm({ ...createForm, password: event.target.value })}
                 required
                 minLength={8}
                 maxLength={128}
@@ -307,9 +301,7 @@ export function AdminDashboard() {
               <input
                 className={inputClass}
                 value={createForm.phone}
-                onChange={(event) =>
-                  setCreateForm({ ...createForm, phone: event.target.value })
-                }
+                onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })}
                 minLength={6}
                 maxLength={30}
                 autoComplete="tel"
@@ -414,118 +406,116 @@ export function AdminDashboard() {
 
                 return (
                   <Fragment key={target.id}>
-                  <tr className="transition hover:bg-slate-50/80 dark:hover:bg-slate-950/40">
-                    <td className={tableCellClass}>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Avatar name={target.fullName} className="h-9 w-9 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="flex items-center gap-2 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            <span className="min-w-0 truncate">{target.fullName}</span>
-                            {isSelf && (
-                              <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                You
-                              </span>
-                            )}
-                          </p>
-                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                            {target.email}
-                            {target.phone ? ` · ${target.phone}` : ""}
-                          </p>
+                    <tr className="transition hover:bg-slate-50/80 dark:hover:bg-slate-950/40">
+                      <td className={tableCellClass}>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Avatar name={target.fullName} className="h-9 w-9 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="flex items-center gap-2 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              <span className="min-w-0 truncate">{target.fullName}</span>
+                              {isSelf && (
+                                <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                  You
+                                </span>
+                              )}
+                            </p>
+                            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                              {target.email}
+                              {target.phone ? ` · ${target.phone}` : ""}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className={tableCellClass}>
-                      <select
-                        className={compactSelectClass}
-                        value={target.role.name}
-                        aria-label={`Role for ${target.fullName}`}
-                        disabled={busy || isSelf}
-                        onChange={(event) =>
-                          void changeRole(target, event.target.value as Role)
-                        }
-                      >
-                        {roles.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className={tableCellClass}>
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${statusBadgeClass(target.accountStatus)}`}
-                      >
-                        {target.accountStatus}
-                      </span>
-                    </td>
-                    <td
-                      className={`${tableCellClass} whitespace-nowrap text-xs text-slate-500 dark:text-slate-400`}
-                    >
-                      {formatDate(target.createdAt)}
-                    </td>
-                    <td className={`${tableCellClass} text-right`}>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          disabled={busy}
-                          aria-label={`Edit profile for ${target.fullName}`}
-                          onClick={() => startEditing(target)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant={suspended ? "secondary" : "danger"}
+                      </td>
+                      <td className={tableCellClass}>
+                        <select
+                          className={compactSelectClass}
+                          value={target.role.name}
+                          aria-label={`Role for ${target.fullName}`}
                           disabled={busy || isSelf}
-                          onClick={() => void toggleStatus(target)}
+                          onChange={(event) => void changeRole(target, event.target.value as Role)}
                         >
-                          {suspended ? "Reactivate" : "Suspend"}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                  {isEditing && (
-                    <tr className="bg-slate-50/70 dark:bg-slate-950/40">
-                      <td colSpan={5} className={tableCellClass}>
-                        <form
-                          aria-label={`Edit profile for ${target.fullName}`}
-                          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto] lg:items-end"
-                          onSubmit={(event) => void handleSaveProfile(event, target)}
+                          {roles.map((role) => (
+                            <option key={role} value={role}>
+                              {role}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className={tableCellClass}>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${statusBadgeClass(target.accountStatus)}`}
                         >
-                          <Field label="Full name">
-                            <input
-                              className={inputClass}
-                              value={editName}
-                              onChange={(event) => setEditName(event.target.value)}
-                              required
-                              minLength={2}
-                              maxLength={120}
-                            />
-                          </Field>
-                          <Field label="Phone number">
-                            <input
-                              className={inputClass}
-                              value={editPhone}
-                              onChange={(event) => setEditPhone(event.target.value)}
-                              minLength={6}
-                              maxLength={30}
-                              placeholder="Clear to remove"
-                            />
-                          </Field>
-                          <Button type="submit" disabled={busy}>
-                            {busy ? "Saving…" : "Save profile"}
-                          </Button>
+                          {target.accountStatus}
+                        </span>
+                      </td>
+                      <td
+                        className={`${tableCellClass} whitespace-nowrap text-xs text-slate-500 dark:text-slate-400`}
+                      >
+                        {formatDate(target.createdAt)}
+                      </td>
+                      <td className={`${tableCellClass} text-right`}>
+                        <div className="flex justify-end gap-2">
                           <Button
-                            type="button"
                             variant="ghost"
                             disabled={busy}
-                            onClick={() => setEditingId(null)}
+                            aria-label={`Edit profile for ${target.fullName}`}
+                            onClick={() => startEditing(target)}
                           >
-                            Cancel
+                            Edit
                           </Button>
-                        </form>
+                          <Button
+                            variant={suspended ? "secondary" : "danger"}
+                            disabled={busy || isSelf}
+                            onClick={() => void toggleStatus(target)}
+                          >
+                            {suspended ? "Reactivate" : "Suspend"}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
-                  )}
+                    {isEditing && (
+                      <tr className="bg-slate-50/70 dark:bg-slate-950/40">
+                        <td colSpan={5} className={tableCellClass}>
+                          <form
+                            aria-label={`Edit profile for ${target.fullName}`}
+                            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto] lg:items-end"
+                            onSubmit={(event) => void handleSaveProfile(event, target)}
+                          >
+                            <Field label="Full name">
+                              <input
+                                className={inputClass}
+                                value={editName}
+                                onChange={(event) => setEditName(event.target.value)}
+                                required
+                                minLength={2}
+                                maxLength={120}
+                              />
+                            </Field>
+                            <Field label="Phone number">
+                              <input
+                                className={inputClass}
+                                value={editPhone}
+                                onChange={(event) => setEditPhone(event.target.value)}
+                                minLength={6}
+                                maxLength={30}
+                                placeholder="Clear to remove"
+                              />
+                            </Field>
+                            <Button type="submit" disabled={busy}>
+                              {busy ? "Saving…" : "Save profile"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              disabled={busy}
+                              onClick={() => setEditingId(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </form>
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 );
               })}
@@ -575,7 +565,10 @@ export function AdminDashboard() {
               Clear
             </Button>
           )}
-          <p className="w-full text-xs font-medium text-slate-500 dark:text-slate-400" aria-live="polite">
+          <p
+            className="w-full text-xs font-medium text-slate-500 dark:text-slate-400"
+            aria-live="polite"
+          >
             {appliedAction ? (
               <>
                 Showing actions containing “{appliedAction}”
@@ -594,9 +587,7 @@ export function AdminDashboard() {
         {logs.length === 0 ? (
           <EmptyState
             message={
-              appliedAction
-                ? "No audit entries match this action filter."
-                : "No audit entries yet."
+              appliedAction ? "No audit entries match this action filter." : "No audit entries yet."
             }
           />
         ) : (
@@ -657,9 +648,7 @@ export function AdminDashboard() {
           </TableShell>
         )}
 
-        {logPagination && (
-          <PaginationControls pagination={logPagination} onChange={setLogPage} />
-        )}
+        {logPagination && <PaginationControls pagination={logPagination} onChange={setLogPage} />}
       </Card>
 
       <IncidentReports id="reports" />

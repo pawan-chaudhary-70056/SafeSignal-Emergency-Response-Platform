@@ -189,7 +189,9 @@ export function LoginPage({
                 />
               </svg>
             </span>
-            <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">SafeSignal</p>
+            <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              SafeSignal
+            </p>
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm sm:p-8">

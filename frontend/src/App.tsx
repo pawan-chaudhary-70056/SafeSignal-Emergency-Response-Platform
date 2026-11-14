@@ -90,7 +90,9 @@ function Shell() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3">
         <span className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-600 dark:border-slate-800 dark:border-t-emerald-400" />
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading SafeSignal…</p>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          Loading SafeSignal…
+        </p>
       </div>
     );
   }
@@ -182,7 +184,10 @@ function Shell() {
                     /
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30">
-                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                    <span
+                      aria-hidden
+                      className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                    />
                     {roleLabel[user.role] ?? user.role}
                   </span>
                 </div>

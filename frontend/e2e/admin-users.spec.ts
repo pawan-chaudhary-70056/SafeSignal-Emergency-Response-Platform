@@ -57,32 +57,29 @@ test("admin creates a user and corrects their profile inline", async ({ page }) 
 
   // Filter to citizens and page through to the newly created account.
   await page.getByRole("button", { name: "Citizens", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Citizens", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Citizens", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
   const createdRow = await findUserRow(page, createdName);
   await expect(createdRow).toBeVisible();
   await expect(createdRow).toContainText(createdEmail);
 
   // Inline profile edit: display name and phone are the permitted fields.
-  await page
-    .getByRole("button", { name: `Edit profile for ${createdName}` })
-    .click();
+  await page.getByRole("button", { name: `Edit profile for ${createdName}` }).click();
   const editForm = page.getByRole("form", { name: `Edit profile for ${createdName}` });
   await expect(editForm).toBeVisible();
   await editForm.getByLabel("Full name").fill(updatedName);
   await editForm.getByLabel("Phone number").fill("+9779800033344");
   await editForm.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByText(`${updatedName}'s profile updated.`)).toBeVisible();
-  await expect(
-    page.getByRole("row").filter({ hasText: updatedName }).first(),
-  ).toContainText("+9779800033344");
+  await expect(page.getByRole("row").filter({ hasText: updatedName }).first()).toContainText(
+    "+9779800033344",
+  );
 
   // The correction is recorded in the audit trail.
-  await page
-    .getByLabel("Filter audit log by action")
-    .fill("admin.user_profile_updated");
+  await page.getByLabel("Filter audit log by action").fill("admin.user_profile_updated");
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(
     page.getByRole("cell", { name: "admin.user_profile_updated" }).first(),

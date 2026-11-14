@@ -337,7 +337,10 @@ export function Sidebar({
                     </span>
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     {active && (
-                      <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dot}`} />
+                      <span
+                        aria-hidden
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dot}`}
+                      />
                     )}
                   </a>
                 </li>

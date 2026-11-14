@@ -37,13 +37,7 @@ function markerIcon(priority: Incident["priority"]) {
   });
 }
 
-function MapFocus({
-  incidents,
-  selectedId,
-}: {
-  incidents: Incident[];
-  selectedId: string | null;
-}) {
+function MapFocus({ incidents, selectedId }: { incidents: Incident[]; selectedId: string | null }) {
   const map = useMap();
 
   useEffect(() => {
@@ -115,10 +109,7 @@ export function LiveIncidentMap({ id = "live-map" }: { id?: string } = {}) {
   }, []);
 
   const mappedIncidents = useMemo(
-    () =>
-      incidents.filter(
-        (incident) => incident.latitude !== null && incident.longitude !== null,
-      ),
+    () => incidents.filter((incident) => incident.latitude !== null && incident.longitude !== null),
     [incidents],
   );
   const selected = incidents.find((incident) => incident.id === selectedId) ?? null;
@@ -154,9 +145,8 @@ export function LiveIncidentMap({ id = "live-map" }: { id?: string } = {}) {
       )}
 
       <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-        {mappedIncidents.length} mapped ·{" "}
-        {incidents.length - mappedIncidents.length} without coordinates · latest{" "}
-        {incidents.length} records in your access scope
+        {mappedIncidents.length} mapped · {incidents.length - mappedIncidents.length} without
+        coordinates · latest {incidents.length} records in your access scope
       </p>
 
       {incidents.length === 0 && !loading ? (
@@ -169,8 +159,8 @@ export function LiveIncidentMap({ id = "live-map" }: { id?: string } = {}) {
             className="relative h-72 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 sm:h-96"
           >
             <p className="sr-only">
-              The map is visual. The incident list next to it contains the same location and
-              status information.
+              The map is visual. The incident list next to it contains the same location and status
+              information.
             </p>
             <MapContainer
               center={DEFAULT_CENTER}
@@ -200,9 +190,7 @@ export function LiveIncidentMap({ id = "live-map" }: { id?: string } = {}) {
                         {incident.status.replace(/_/g, " ")} · {incident.priority}
                       </p>
                       {incident.locationDescription && (
-                        <p className="text-xs text-slate-600">
-                          {incident.locationDescription}
-                        </p>
+                        <p className="text-xs text-slate-600">{incident.locationDescription}</p>
                       )}
                     </div>
                   </Popup>

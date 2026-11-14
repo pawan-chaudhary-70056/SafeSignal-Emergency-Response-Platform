@@ -85,6 +85,11 @@ export function CitizenDashboard() {
   const locationWatchRef = useRef<number | null>(null);
   const locationTimerRef = useRef<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelNotice, setCancelNotice] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const query = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
@@ -340,8 +345,45 @@ export function CitizenDashboard() {
       ]);
       setSelected(detail.incident);
       setHistory(historyResponse.history);
+      // Notices belong to the incident that produced them.
+      setCancelNotice(null);
+      setCancelError(null);
+      setCancelOpen(false);
+      setCancelReason("");
     } catch (caught) {
       setError(errorMessage(caught));
+    }
+  }
+
+  const cancellableStatuses: IncidentStatus[] = ["SUBMITTED", "UNDER_REVIEW", "VERIFIED"];
+
+  // FR-026: the reporting citizen may cancel an incident that dispatch has not
+  // yet sent to a responder. The server re-validates eligibility either way.
+  async function handleCancel() {
+    if (!selected) return;
+
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const response = await api<{ incident: Incident }>(`/incidents/${selected.id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify(cancelReason.trim() ? { reason: cancelReason.trim() } : {}),
+      });
+
+      setSelected(response.incident);
+      setCancelNotice(`Incident ${response.incident.referenceNumber} was cancelled.`);
+      setCancelOpen(false);
+      setCancelReason("");
+
+      const historyResponse = await api<{ history: HistoryEntry[] }>(
+        `/incidents/${selected.id}/history`,
+      );
+      setHistory(historyResponse.history);
+      await load();
+    } catch (caught) {
+      setCancelError(errorMessage(caught));
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -357,308 +399,382 @@ export function CitizenDashboard() {
       <DashboardHeader role="CITIZEN" id="overview" />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
-      <div className="min-w-0 space-y-6">
-        <Card
-          id="report"
-          title="Report an emergency"
-          subtitle="Provide what you can — location can be captured automatically or entered manually."
-        >
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <Field label="Emergency category">
-              <select
-                className={inputClass}
-                value={form.categoryId}
-                onChange={(event) => update("categoryId", event.target.value)}
-                required
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="What is happening?" hint="Minimum 5 characters.">
-              <textarea
-                className={`${inputClass} min-h-28 resize-y leading-relaxed`}
-                value={form.description}
-                onChange={(event) => update("description", event.target.value)}
-                placeholder="A person has been injured in a road accident."
-                required
-                minLength={5}
-                maxLength={2000}
-              />
-            </Field>
-
-            <Field label="Contact number" hint="Required, so responders can reach you.">
-              <input
-                className={inputClass}
-                required
-                minLength={6}
-                maxLength={255}
-                value={form.contactInformation}
-                onChange={(event) => update("contactInformation", event.target.value)}
-                placeholder="+9779800000000"
-              />
-            </Field>
-
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Emergency location</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Coordinates or a clear landmark.</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setMapPickerOpen((open) => !open)}
-                    aria-expanded={mapPickerOpen}
-                  >
-                    {mapPickerOpen ? "Hide map picker" : "Pick on map"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={useCurrentLocation}
-                    disabled={locating}
-                  >
-                    {locating ? "Locating…" : "Use my current location"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Field label="Latitude">
-                  <input
-                    className={inputClass}
-                    value={form.latitude}
-                    onChange={(event) => update("latitude", event.target.value)}
-                    placeholder="27.7172"
-                    inputMode="decimal"
-                  />
-                </Field>
-                <Field label="Longitude">
-                  <input
-                    className={inputClass}
-                    value={form.longitude}
-                    onChange={(event) => update("longitude", event.target.value)}
-                    placeholder="85.3240"
-                    inputMode="decimal"
-                  />
-                </Field>
-              </div>
-
-              {mapPickerOpen && (
-                <LocationPicker
-                  latitude={form.latitude}
-                  longitude={form.longitude}
-                  onPick={(latitude, longitude) => {
-                    update("latitude", latitude);
-                    update("longitude", longitude);
-                    setLocationStatus(
-                      "Location set from the map. Adjust the pin or coordinates before submitting.",
-                    );
-                  }}
-                  onClose={() => setMapPickerOpen(false)}
-                />
-              )}
-
-              <div className="mt-3">
-                <Field label="Landmark or location description">
-                  <input
-                    className={inputClass}
-                    value={form.locationDescription}
-                    onChange={(event) => update("locationDescription", event.target.value)}
-                    placeholder="Near the main gate of the community hospital"
-                  />
-                </Field>
-              </div>
-
-              {locationStatus && (
-                <p
-                  role="status"
-                  aria-live="polite"
-                  className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400"
+        <div className="min-w-0 space-y-6">
+          <Card
+            id="report"
+            title="Report an emergency"
+            subtitle="Provide what you can — location can be captured automatically or entered manually."
+          >
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              <Field label="Emergency category">
+                <select
+                  className={inputClass}
+                  value={form.categoryId}
+                  onChange={(event) => update("categoryId", event.target.value)}
+                  required
                 >
-                  {locationStatus}
-                </p>
-              )}
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-              <details className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                <summary className="cursor-pointer font-semibold text-slate-600 transition hover:text-slate-800 dark:text-slate-300 dark:hover:text-white">
-                  Location not working?
-                </summary>
-                <ul className="mt-2 list-disc space-y-1 pl-4 leading-relaxed">
-                  <li>
-                    Allow location access for this site from your browser&apos;s address-bar
-                    settings.
-                  </li>
-                  <li>
-                    Open SafeSignal through <code>http://localhost:5174</code> or an HTTPS
-                    address. Browsers block location on plain HTTP network addresses.
-                  </li>
-                  <li>Make sure location services are enabled on your device.</li>
-                  <li>
-                    If it still fails, use the <strong>Pick on map</strong> button, enter the
-                    latitude and longitude manually, or provide a clear landmark.
-                  </li>
-                </ul>
-              </details>
-            </div>
+              <Field label="What is happening?" hint="Minimum 5 characters.">
+                <textarea
+                  className={`${inputClass} min-h-28 resize-y leading-relaxed`}
+                  value={form.description}
+                  onChange={(event) => update("description", event.target.value)}
+                  placeholder="A person has been injured in a road accident."
+                  required
+                  minLength={5}
+                  maxLength={2000}
+                />
+              </Field>
 
-            {error && <Alert tone="error" message={error} />}
-            {success && <Alert tone="success" message={success} />}
+              <Field label="Contact number" hint="Required, so responders can reach you.">
+                <input
+                  className={inputClass}
+                  required
+                  minLength={6}
+                  maxLength={255}
+                  value={form.contactInformation}
+                  onChange={(event) => update("contactInformation", event.target.value)}
+                  placeholder="+9779800000000"
+                />
+              </Field>
 
-            <Button type="submit" disabled={busy} className="w-full py-3">
-              {busy ? "Submitting…" : "Submit emergency report"}
-            </Button>
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      Emergency location
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Coordinates or a clear landmark.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setMapPickerOpen((open) => !open)}
+                      aria-expanded={mapPickerOpen}
+                    >
+                      {mapPickerOpen ? "Hide map picker" : "Pick on map"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={useCurrentLocation}
+                      disabled={locating}
+                    >
+                      {locating ? "Locating…" : "Use my current location"}
+                    </Button>
+                  </div>
+                </div>
 
-            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              SafeSignal coordinates reporting and response. It does not replace official emergency
-              numbers.
-            </p>
-          </form>
-        </Card>
-      </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <Field label="Latitude">
+                    <input
+                      className={inputClass}
+                      value={form.latitude}
+                      onChange={(event) => update("latitude", event.target.value)}
+                      placeholder="27.7172"
+                      inputMode="decimal"
+                    />
+                  </Field>
+                  <Field label="Longitude">
+                    <input
+                      className={inputClass}
+                      value={form.longitude}
+                      onChange={(event) => update("longitude", event.target.value)}
+                      placeholder="85.3240"
+                      inputMode="decimal"
+                    />
+                  </Field>
+                </div>
 
-      <div className="min-w-0 space-y-6">
-        <Card
-          id="incidents"
-          title="My incidents"
-          subtitle="Status updates appear here as dispatchers and responders act."
-          action={
-            <div className="flex items-center gap-2">
-              <LiveBadge connected={connected} />
-              <Button variant="ghost" onClick={() => void load()}>
-                Refresh
+                {mapPickerOpen && (
+                  <LocationPicker
+                    latitude={form.latitude}
+                    longitude={form.longitude}
+                    onPick={(latitude, longitude) => {
+                      update("latitude", latitude);
+                      update("longitude", longitude);
+                      setLocationStatus(
+                        "Location set from the map. Adjust the pin or coordinates before submitting.",
+                      );
+                    }}
+                    onClose={() => setMapPickerOpen(false)}
+                  />
+                )}
+
+                <div className="mt-3">
+                  <Field label="Landmark or location description">
+                    <input
+                      className={inputClass}
+                      value={form.locationDescription}
+                      onChange={(event) => update("locationDescription", event.target.value)}
+                      placeholder="Near the main gate of the community hospital"
+                    />
+                  </Field>
+                </div>
+
+                {locationStatus && (
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400"
+                  >
+                    {locationStatus}
+                  </p>
+                )}
+
+                <details className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  <summary className="cursor-pointer font-semibold text-slate-600 transition hover:text-slate-800 dark:text-slate-300 dark:hover:text-white">
+                    Location not working?
+                  </summary>
+                  <ul className="mt-2 list-disc space-y-1 pl-4 leading-relaxed">
+                    <li>
+                      Allow location access for this site from your browser&apos;s address-bar
+                      settings.
+                    </li>
+                    <li>
+                      Open SafeSignal through <code>http://localhost:5174</code> or an HTTPS
+                      address. Browsers block location on plain HTTP network addresses.
+                    </li>
+                    <li>Make sure location services are enabled on your device.</li>
+                    <li>
+                      If it still fails, use the <strong>Pick on map</strong> button, enter the
+                      latitude and longitude manually, or provide a clear landmark.
+                    </li>
+                  </ul>
+                </details>
+              </div>
+
+              {error && <Alert tone="error" message={error} />}
+              {success && <Alert tone="success" message={success} />}
+
+              <Button type="submit" disabled={busy} className="w-full py-3">
+                {busy ? "Submitting…" : "Submit emergency report"}
               </Button>
-            </div>
-          }
-        >
-          <ListFilters
-            search={search}
-            onSearchChange={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
-            status={filter}
-            statusOptions={statusFilters}
-            onStatusChange={(value) => {
-              setFilter(value as "" | IncidentStatus);
-              setPage(1);
-            }}
-            priority={priority}
-            priorityOptions={[
-              { label: "All priorities", value: "" },
-              { label: "Low", value: "LOW" },
-              { label: "Medium", value: "MEDIUM" },
-              { label: "High", value: "HIGH" },
-              { label: "Critical", value: "CRITICAL" },
-            ]}
-            onPriorityChange={(value) => {
-              setPriority(value as "" | Priority);
-              setPage(1);
-            }}
-            resultSummary={
-              pagination
-                ? `${pagination.totalItems} report${pagination.totalItems === 1 ? "" : "s"}`
-                : undefined
+
+              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                SafeSignal coordinates reporting and response. It does not replace official
+                emergency numbers.
+              </p>
+            </form>
+          </Card>
+        </div>
+
+        <div className="min-w-0 space-y-6">
+          <Card
+            id="incidents"
+            title="My incidents"
+            subtitle="Status updates appear here as dispatchers and responders act."
+            action={
+              <div className="flex items-center gap-2">
+                <LiveBadge connected={connected} />
+                <Button variant="ghost" onClick={() => void load()}>
+                  Refresh
+                </Button>
+              </div>
             }
-          />
-
-          {lastEvent && (
-            <div className="mb-3">
-              <Alert tone="success" message={lastEvent} />
-            </div>
-          )}
-
-          {incidents.length === 0 ? (
-            <EmptyState
-              message={
-                search || filter || priority
-                  ? "No reports match these filters."
-                  : "You have not submitted any incidents yet."
+          >
+            <ListFilters
+              search={search}
+              onSearchChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+              status={filter}
+              statusOptions={statusFilters}
+              onStatusChange={(value) => {
+                setFilter(value as "" | IncidentStatus);
+                setPage(1);
+              }}
+              priority={priority}
+              priorityOptions={[
+                { label: "All priorities", value: "" },
+                { label: "Low", value: "LOW" },
+                { label: "Medium", value: "MEDIUM" },
+                { label: "High", value: "HIGH" },
+                { label: "Critical", value: "CRITICAL" },
+              ]}
+              onPriorityChange={(value) => {
+                setPriority(value as "" | Priority);
+                setPage(1);
+              }}
+              resultSummary={
+                pagination
+                  ? `${pagination.totalItems} report${pagination.totalItems === 1 ? "" : "s"}`
+                  : undefined
               }
             />
-          ) : (
-            <ul className="space-y-2.5">
-              {incidents.map((incident) => (
-                <li key={incident.id}>
-                  <IncidentListItem
-                    incident={incident}
-                    selected={selected?.id === incident.id}
-                    onSelect={(id) => void openIncident(id)}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
 
-          {pagination && <PaginationControls pagination={pagination} onChange={setPage} />}
-        </Card>
-
-        {selected ? (
-          <Card
-            title={`Incident ${selected.referenceNumber}`}
-            subtitle={`${selected.category.name} · reported ${formatDate(selected.createdAt)}`}
-            action={<StatusBadge status={selected.status} />}
-          >
-            <div className="space-y-4">
-              <IncidentSummary incident={selected} />
-
-              {selected.rejectionReason && (
-                <Alert tone="error" message={`Rejected: ${selected.rejectionReason}`} />
-              )}
-
-              {selected.resolutionNotes && (
-                <Alert tone="success" message={`Resolution: ${selected.resolutionNotes}`} />
-              )}
-
-              <IncidentEvidence incident={selected} canUpload canDelete />
-
-              <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Status history
-                </h3>
-
-                {history.length === 0 ? (
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">No status changes yet.</p>
-                ) : (
-                  <ol className="mt-3 space-y-4 border-l border-slate-200 dark:border-slate-800 pl-4">
-                    {history.map((entry) => (
-                      <li key={entry.id} className="relative">
-                        <span
-                          aria-hidden
-                          className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50 dark:ring-emerald-500/20"
-                        />
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                          {entry.previousStatus ? `${entry.previousStatus} → ` : ""}
-                          {entry.newStatus}
-                        </p>
-                        {entry.reason && (
-                          <p className="mt-0.5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                            {entry.reason}
-                          </p>
-                        )}
-                        <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                          {formatDate(entry.createdAt)}
-                          {entry.changedBy ? ` · ${entry.changedBy.fullName}` : ""}
-                        </p>
-                      </li>
-                    ))}
-                  </ol>
-                )}
+            {lastEvent && (
+              <div className="mb-3">
+                <Alert tone="success" message={lastEvent} />
               </div>
-            </div>
+            )}
+
+            {incidents.length === 0 ? (
+              <EmptyState
+                message={
+                  search || filter || priority
+                    ? "No reports match these filters."
+                    : "You have not submitted any incidents yet."
+                }
+              />
+            ) : (
+              <ul className="space-y-2.5">
+                {incidents.map((incident) => (
+                  <li key={incident.id}>
+                    <IncidentListItem
+                      incident={incident}
+                      selected={selected?.id === incident.id}
+                      onSelect={(id) => void openIncident(id)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {pagination && <PaginationControls pagination={pagination} onChange={setPage} />}
           </Card>
-        ) : (
-          <Card title="Incident details">
-            <EmptyState message="Select one of your reports to see its full timeline." />
-          </Card>
-        )}
-      </div>
+
+          {selected ? (
+            <Card
+              title={`Incident ${selected.referenceNumber}`}
+              subtitle={`${selected.category.name} · reported ${formatDate(selected.createdAt)}`}
+              action={<StatusBadge status={selected.status} />}
+            >
+              <div className="space-y-4">
+                <IncidentSummary incident={selected} />
+
+                {selected.rejectionReason && (
+                  <Alert tone="error" message={`Rejected: ${selected.rejectionReason}`} />
+                )}
+
+                {selected.resolutionNotes && (
+                  <Alert tone="success" message={`Resolution: ${selected.resolutionNotes}`} />
+                )}
+
+                {/* Cancellation notices live outside the gated withdraw section
+                  so the confirmation stays visible once the status becomes
+                  CANCELLED and the section itself unmounts. */}
+                {cancelNotice && <Alert tone="success" message={cancelNotice} />}
+                {cancelError && <Alert tone="error" message={cancelError} />}
+
+                {cancellableStatuses.includes(selected.status) && (
+                  <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Withdraw this report
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      You can cancel this report until a responder is dispatched. Dispatch is
+                      notified immediately.
+                    </p>
+
+                    {cancelOpen ? (
+                      <div className="mt-2.5 space-y-2.5">
+                        <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
+                          <span className="mb-1.5 block">Reason (optional)</span>
+                          <textarea
+                            className={`${inputClass} min-h-16 resize-y`}
+                            value={cancelReason}
+                            onChange={(event) => setCancelReason(event.target.value)}
+                            maxLength={500}
+                            placeholder="The situation resolved itself before help arrived."
+                          />
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="danger"
+                            disabled={cancelling}
+                            onClick={() => void handleCancel()}
+                          >
+                            {cancelling ? "Cancelling…" : "Confirm cancellation"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            disabled={cancelling}
+                            onClick={() => {
+                              setCancelOpen(false);
+                              setCancelReason("");
+                            }}
+                          >
+                            Keep report
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-2.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            setCancelNotice(null);
+                            setCancelError(null);
+                            setCancelOpen(true);
+                          }}
+                        >
+                          Request cancellation
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <IncidentEvidence incident={selected} canUpload canDelete />
+
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Status history
+                  </h3>
+
+                  {history.length === 0 ? (
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      No status changes yet.
+                    </p>
+                  ) : (
+                    <ol className="mt-3 space-y-4 border-l border-slate-200 dark:border-slate-800 pl-4">
+                      {history.map((entry) => (
+                        <li key={entry.id} className="relative">
+                          <span
+                            aria-hidden
+                            className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50 dark:ring-emerald-500/20"
+                          />
+                          <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                            {entry.previousStatus ? `${entry.previousStatus} → ` : ""}
+                            {entry.newStatus}
+                          </p>
+                          {entry.reason && (
+                            <p className="mt-0.5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                              {entry.reason}
+                            </p>
+                          )}
+                          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                            {formatDate(entry.createdAt)}
+                            {entry.changedBy ? ` · ${entry.changedBy.fullName}` : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card title="Incident details">
+              <EmptyState message="Select one of your reports to see its full timeline." />
+            </Card>
+          )}
+        </div>
       </div>
       <LiveIncidentMap id="map" />
       <IncidentReports id="reports" />

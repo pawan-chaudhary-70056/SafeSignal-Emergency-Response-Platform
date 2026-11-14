@@ -13,20 +13,18 @@ test("theme toggle applies dark mode and persists across reloads", async ({ page
   await page.getByRole("button", { name: "Switch to dark theme" }).click();
   await expect(html).toHaveClass(/dark/);
   expect(await page.evaluate(() => localStorage.getItem("safesignal-theme"))).toBe("dark");
-  expect(
-    await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme),
-  ).toBe("dark");
-
-  const darkBackground = await page.evaluate(
-    () => getComputedStyle(document.body).backgroundColor,
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(
+    "dark",
   );
+
+  const darkBackground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   expect(darkBackground).not.toBe(lightBackground);
 
   await page.reload();
   await expect(html).toHaveClass(/dark/);
-  expect(
-    await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme),
-  ).toBe("dark");
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(
+    "dark",
+  );
 
   await page.getByRole("button", { name: "Switch to light theme" }).click();
   await expect(html).not.toHaveClass(/dark/);

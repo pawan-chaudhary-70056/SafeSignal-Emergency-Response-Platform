@@ -43,21 +43,20 @@ test("citizen attaches evidence and updates their profile", async ({ browser }) 
 
     // 2. Citizen attaches a small PNG as supporting evidence.
     const png = readFileSync(join(fixtureDir, "evidence-pixel.png"));
-    await citizen
-      .getByRole("button", { name: "Attach evidence file" })
-      .setInputFiles({
-        name: "smoke-photo.png",
-        mimeType: "image/png",
-        buffer: png,
-      });
+    await citizen.getByRole("button", { name: "Attach evidence file" }).setInputFiles({
+      name: "smoke-photo.png",
+      mimeType: "image/png",
+      buffer: png,
+    });
 
     const evidenceRow = citizen.locator("li").filter({ hasText: "smoke-photo.png" });
     await expect(evidenceRow).toBeVisible();
     await expect(evidenceRow.getByText("PNG", { exact: true })).toBeVisible();
     await expect(citizen.getByText(/Attached “smoke-photo\.png”\./)).toBeVisible();
-    await expect(
-      evidenceRow.getByRole("link", { name: "Download" }),
-    ).toHaveAttribute("download", "smoke-photo.png");
+    await expect(evidenceRow.getByRole("link", { name: "Download" })).toHaveAttribute(
+      "download",
+      "smoke-photo.png",
+    );
 
     // 3. The dispatcher sees the same evidence in the incident panel.
     await signIn(dispatcher, "dispatcher@safesignal.local");
@@ -72,9 +71,7 @@ test("citizen attaches evidence and updates their profile", async ({ browser }) 
     const nameField = citizen.getByLabel("Full name");
     await expect(nameField).not.toBeEmpty();
     await nameField.fill("Updated Demo Citizen");
-    await citizen
-      .getByLabel("Phone number")
-      .fill("+9779812345678");
+    await citizen.getByLabel("Phone number").fill("+9779812345678");
     await citizen.getByRole("button", { name: "Save profile" }).click();
     await expect(citizen.getByText("Profile updated.")).toBeVisible();
 

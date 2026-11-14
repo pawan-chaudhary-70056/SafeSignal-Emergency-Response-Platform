@@ -43,9 +43,7 @@ test("citizen refreshes state over REST after the socket reconnects", async ({ b
     await signIn(citizen, "citizen@safesignal.local");
     await citizen.getByLabel(/What is happening/).fill(description);
     await citizen.getByLabel(/Contact number/).fill("+9779800000000");
-    await citizen
-      .getByLabel(/Landmark or location description/)
-      .fill("Archive room, second floor");
+    await citizen.getByLabel(/Landmark or location description/).fill("Archive room, second floor");
     await citizen.getByRole("button", { name: "Submit emergency report" }).click();
     await expect(citizen.getByText(/Emergency report submitted\. Reference: /)).toBeVisible();
     await expect.poll(() => sockets.length).toBeGreaterThan(0);
@@ -71,9 +69,9 @@ test("citizen refreshes state over REST after the socket reconnects", async ({ b
     await expect(citizen.getByText("Live", { exact: true }).first()).toBeVisible({
       timeout: 40_000,
     });
-    await expect(
-      citizen.getByText("Reconnected — refreshed the latest data"),
-    ).toBeVisible({ timeout: 20_000 });
+    await expect(citizen.getByText("Reconnected — refreshed the latest data")).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(citizenItem).toContainText("UNDER REVIEW");
   } finally {
     allowReconnect = true;
