@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SafeSignal — Final Project Report</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --body: #334155;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --soft: #f8fafc;
+    --emerald: #059669;
+    --emerald-dark: #047857;
+    --emerald-soft: #ecfdf5;
+    --sky: #0284c7;
+    --amber: #b45309;
+    --violet: #7e22ce;
+    --navy: #0b1220;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0;
+    background: #e2e8f0;
+    color: var(--body);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.4pt;
+    line-height: 1.58;
+  }
+
+  .report {
+    width: 210mm;
+    margin: 0 auto;
+    background: #fff;
+  }
+
+  .cover {
+    min-height: 263mm;
+    padding: 20mm 18mm 16mm;
+    background:
+      radial-gradient(circle at 88% 10%, rgba(16, 185, 129, .22), transparent 38%),
+      radial-gradient(circle at 8% 92%, rgba(14, 165, 233, .16), transparent 35%),
+      linear-gradient(145deg, #07111f 0%, #0b1b2c 55%, #0b2b2a 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    break-after: page;
+  }
+
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .brand-mark {
+    width: 52px; height: 52px; border-radius: 15px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #10b981, #0f766e);
+    box-shadow: 0 12px 30px rgba(16, 185, 129, .28);
+  }
+  .brand-mark svg { width: 29px; height: 29px; }
+  .brand-name { font-size: 22px; font-weight: 800; letter-spacing: -.4px; }
+  .brand-tag { font-size: 10px; letter-spacing: 2.2px; text-transform: uppercase; color: #6ee7b7; font-weight: 700; }
+
+  .cover-eyebrow {
+    margin-top: 28mm;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; color: #6ee7b7;
+  }
+  .cover h1 {
+    margin: 7px 0 0;
+    font-size: 43px; line-height: 1.07; letter-spacing: -1.8px; font-weight: 800;
+    color: #fff;
+  }
+  .cover h1 span { color: #34d399; }
+  .cover-sub {
+    margin: 16px 0 0; max-width: 155mm;
+    font-size: 16.5px; line-height: 1.45; color: #cbd5e1; font-weight: 500;
+  }
+  .cover-desc {
+    margin: 14px 0 0; max-width: 150mm;
+    font-size: 11.2px; line-height: 1.7; color: #94a3b8;
+  }
+  .cover-metrics {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    margin-top: 24px;
+  }
+  .cover-metric {
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    border-radius: 13px; padding: 12px 12px 11px;
+  }
+  .cover-metric strong { display: block; font-size: 22px; color: #fff; letter-spacing: -.7px; }
+  .cover-metric span { display: block; margin-top: 3px; font-size: 8.8px; line-height: 1.35; color: #94a3b8; text-transform: uppercase; letter-spacing: .8px; font-weight: 600; }
+
+  .cover-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 20px;
+    border-top: 1px solid rgba(255,255,255,.13);
+    padding-top: 13px; font-size: 9.4px; color: #94a3b8;
+  }
+  .cover-meta b { color: #e2e8f0; font-weight: 600; }
+  .cover-note {
+    margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+    background: rgba(251, 191, 36, .08);
+    border: 1px solid rgba(251, 191, 36, .22);
+    color: #fcd34d; font-size: 9.2px; line-height: 1.5;
+  }
+
+  .content { padding: 0 17mm 17mm; }
+
+  h2 {
+    margin: 0 0 8px;
+    font-size: 21px; line-height: 1.18; letter-spacing: -.5px;
+    color: var(--ink);
+    break-after: avoid;
+  }
+  h2 .num {
+    display: inline-block; min-width: 24px;
+    color: var(--emerald); font-weight: 800;
+  }
+  h3 {
+    margin: 17px 0 6px;
+    font-size: 11.2px; line-height: 1.35; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--ink);
+    break-after: avoid;
+  }
+  h4 { margin: 12px 0 4px; font-size: 10.8px; color: var(--ink); break-after: avoid; }
+  p { margin: 0 0 9px; }
+  strong { color: var(--ink); }
+  a { color: var(--emerald-dark); text-decoration: none; }
+
+  .chapter { padding-top: 9mm; break-before: auto; }
+  .chapter:first-of-type { padding-top: 8mm; }
+  .chapter-rule {
+    height: 3px; width: 42px; border-radius: 2px;
+    background: linear-gradient(90deg, #10b981, #0ea5e9);
+    margin: 0 0 13px;
+    break-after: avoid;
+  }
+  .lead { font-size: 11.2px; line-height: 1.65; color: #475569; }
+
+  .doc-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 5px 18px;
+    border: 1px solid var(--line); border-radius: 11px;
+    padding: 12px 14px; background: var(--soft);
+    margin: 10px 0 15px; font-size: 9.4px;
+  }
+  .doc-grid div { padding: 3px 0; border-bottom: 1px dotted #e2e8f0; }
+  .doc-grid span { display: inline-block; width: 36mm; color: var(--muted); font-weight: 600; }
+
+  .toc {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px 24px;
+    margin: 8px 0 0; padding: 0; list-style: none;
+    font-size: 9.7px;
+  }
+  .toc li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px dotted #e2e8f0; }
+  .toc b { color: var(--ink); font-weight: 600; }
+  .toc span { color: var(--emerald); font-weight: 700; }
+
+  .callout {
+    border-left: 3px solid var(--emerald);
+    background: var(--emerald-soft);
+    border-radius: 0 9px 9px 0;
+    padding: 10px 13px;
+    margin: 11px 0;
+    font-size: 9.8px;
+  }
+  .callout b { color: var(--emerald-dark); }
+  .callout.warn { border-left-color: #d97706; background: #fffbeb; }
+  .callout.warn b { color: #b45309; }
+  .callout.info { border-left-color: #0284c7; background: #eff6ff; }
+  .callout.info b { color: #0369a1; }
+
+  .metric-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px;
+    margin: 11px 0 13px;
+  }
+  .metric {
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 10px 9px; background: #fff;
+  }
+  .metric strong { display: block; font-size: 19px; line-height: 1.15; color: var(--ink); letter-spacing: -.5px; }
+  .metric span { display: block; margin-top: 4px; font-size: 8.3px; line-height: 1.35; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
+
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 12px; }
+  .feature {
+    border: 1px solid var(--line); border-radius: 11px;
+    padding: 10px 12px; background: #fff;
+    break-inside: avoid;
+  }
+  .feature .icon {
+    display: inline-grid; place-items: center;
+    width: 24px; height: 24px; border-radius: 7px;
+    background: var(--emerald-soft); color: var(--emerald-dark);
+    font-size: 12px; font-weight: 800; margin-bottom: 5px;
+  }
+  .feature h4 { margin: 0 0 3px; font-size: 10.6px; }
+  .feature p { margin: 0; font-size: 9.2px; line-height: 1.5; color: #475569; }
+
+  table { width: 100%; border-collapse: collapse; margin: 9px 0 13px; font-size: 8.9px; }
+  thead { display: table-header-group; }
+  th {
+    background: var(--navy); color: #fff; text-align: left;
+    padding: 6px 7px; font-size: 8.2px; letter-spacing: .4px;
+    text-transform: uppercase; font-weight: 700;
+  }
+  td { padding: 5.5px 7px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:nth-child(even) td { background: #fbfdff; }
+  tr { break-inside: avoid; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 7.8px; font-weight: 700; letter-spacing: .4px; white-space: nowrap; }
+  .tag.yes { background: #dcfce7; color: #166534; }
+  .tag.no { background: #fee2e2; color: #991b1b; }
+  .tag.scope { background: #e0f2fe; color: #075985; }
+
+  figure { margin: 10px 0 13px; break-inside: avoid; }
+  figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 9px; }
+  figcaption { margin-top: 5px; font-size: 8.4px; line-height: 1.4; color: var(--muted); }
+  figcaption b { color: var(--ink); }
+
+  .shot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 9px 0 12px; }
+  .shot-grid figure { margin: 0; }
+  .shot-grid img { border-radius: 8px; }
+
+  .lifecycle {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+    margin: 9px 0 11px;
+  }
+  .state {
+    border: 1px solid #a7f3d0; background: #ecfdf5; color: #065f46;
+    border-radius: 6px; padding: 3px 6px; font-size: 7.9px; font-weight: 700;
+    letter-spacing: .3px; white-space: nowrap;
+  }
+  .arrow { color: #94a3b8; font-size: 9px; }
+  .state.exit { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .two-col > div { min-width: 0; }
+
+  .checklist { margin: 7px 0 11px; padding: 0; list-style: none; }
+  .checklist li { position: relative; padding: 3px 0 3px 17px; font-size: 9.6px; break-inside: avoid; }
+  .checklist li::before { content: "✓"; position: absolute; left: 0; top: 2px; color: var(--emerald); font-weight: 800; }
+  .checklist.cross li::before { content: "×"; color: #dc2626; }
+
+  .code {
+    background: #0b1220; color: #d1fae5; border-radius: 8px;
+    padding: 9px 11px; font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 8.4px; line-height: 1.6; margin: 7px 0 10px;
+    white-space: pre-wrap; break-inside: avoid;
+  }
+  .code .muted { color: #64748b; }
+
+  .chapter-footer { display: none; }
+
+  .small { font-size: 8.6px; color: var(--muted); }
+  .keep { break-inside: avoid; }
+  .mt0 { margin-top: 0; }
+  .mb0 { margin-bottom: 0; }
+  .nowrap { white-space: nowrap; }
+
+  .end {
+    margin-top: 20px; padding: 15px 17px; border-radius: 12px;
+    background: linear-gradient(135deg, #07111f, #0b2b2a);
+    color: #cbd5e1;
+  }
+  .end h3 { color: #6ee7b7; margin: 0 0 5px; }
+  .end p { margin: 0; color: #cbd5e1; font-size: 9.6px; }
+
+  @page { size: A4; margin: 16mm 15mm 17mm; }
+  .callout, .metric-grid { break-inside: avoid; }
+  #architecture, #conclusion, #appendix { break-before: page; }
+
+  @media print {
+    body { background: #fff; }
+    .report { width: auto; margin: 0; }
+    .content { padding: 0; }
+    .cover { min-height: 264mm; margin: 0; }
+    .chapter { padding-top: 8mm; }
+    .chapter:first-of-type { padding-top: 0; }
+    a { color: inherit; }
+  }
+</style>
+</head>
+<body>
+<div class="report">
+
+  <!-- ================= COVER ================= -->
+  <section class="cover">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3.2 5.4 6v5.3c0 4.1 2.7 7.6 6.6 9.5 3.9-1.9 6.6-5.4 6.6-9.5V6L12 3.2Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>
+          <path d="m9.4 11.9 1.9 1.9 3.6-3.7" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <div>
+        <div class="brand-name">SafeSignal</div>
+        <div class="brand-tag">Emergency response platform</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="cover-eyebrow">Final Project Report</div>
+      <h1>Emergency reporting.<br><span>One coordinated response.</span></h1>
+      <p class="cover-sub">A secure, role-based platform that connects citizens, dispatchers, responders and administrators on one shared incident timeline.</p>
+      <p class="cover-desc">From the first SOS to the final close, SafeSignal validates every transition, preserves the full history and delivers live updates without making the database a second-class citizen.</p>
+
+      <div class="cover-metrics">
+        <div class="cover-metric"><strong>4</strong><span>Role-based departments</span></div>
+        <div class="cover-metric"><strong>6</strong><span>Core product features</span></div>
+        <div class="cover-metric"><strong>26/26</strong><span>Backend tests passing</span></div>
+        <div class="cover-metric"><strong>89.7%</strong><span>Line coverage</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="cover-meta">
+        <span><b>Version</b> 1.0</span>
+        <span><b>Date</b> 14 November 2026</span>
+        <span><b>Status</b> MVP implemented &amp; verified</span>
+        <span><b>Stack</b> React · Express · PostgreSQL · Socket.IO</span>
+      </div>
+      <div class="cover-note"><b>Important:</b> SafeSignal is a controlled demonstration and academic prototype. It does not replace official emergency numbers, does not dispatch real emergency services, and does not guarantee responder availability or response times.</div>
+    </div>
+  </section>
+
+  <div class="content">
+
+    <!-- ================= FRONT MATTER ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2>Document Control &amp; Contents</h2>
+
+      <div class="doc-grid">
+        <div><span>Project</span><strong>SafeSignal</strong></div>
+        <div><span>Document</span><strong>Final Project Report</strong></div>
+        <div><span>Version</span><strong>1.0</strong></div>
+        <div><span>Date</span><strong>14 November 2026</strong></div>
+        <div><span>Status</span><strong>MVP implemented, tested and verified</strong></div>
+        <div><span>Audience</span><strong>Project evaluation, technical review, stakeholders</strong></div>
+        <div><span>Architecture</span><strong>Modular monolith + React SPA</strong></div>
+        <div><span>Database</span><strong>PostgreSQL 16 with Prisma 6</strong></div>
+        <div><span>Repository</span><strong>Local <code>main</code> working tree</strong></div>
+        <div><span>Classification</span><strong>Demonstration / academic prototype</strong></div>
+      </div>
+
+      <h3>Contents</h3>
+      <ul class="toc">
+        <li><b>1 · Executive Summary</b><span>2</span></li>
+        <li><b>2 · Project Overview</b><span>3</span></li>
+        <li><b>3 · The Problem</b><span>4</span></li>
+        <li><b>4 · The Proposed Solution</b><span>4</span></li>
+        <li><b>5 · Core Features</b><span>6</span></li>
+        <li><b>6 · Departments &amp; Access</b><span>7</span></li>
+        <li><b>7 · Product Walkthrough</b><span>9</span></li>
+        <li><b>8 · System Architecture</b><span>11</span></li>
+        <li><b>9 · Data, Real-Time &amp; Reliability</b><span>12</span></li>
+        <li><b>10 · Security &amp; Privacy</b><span>13</span></li>
+        <li><b>11 · Quality &amp; Verification</b><span>14</span></li>
+        <li><b>12 · Limitations &amp; Future Work</b><span>15</span></li>
+        <li><b>13 · Conclusion</b><span>16</span></li>
+        <li><b>Appendix · Setup &amp; Access Reference</b><span>17</span></li>
+      </ul>
+
+      <div class="callout info" style="margin-top:16px">
+        <b>How to read this report.</b> Sections 1–4 explain the project and the problem it solves. Sections 5–7 cover the product, the four departments and the actual screens. Sections 8–11 cover architecture, security and verification. Sections 12–13 state the limits and the conclusion. Image-heavy pages use real screenshots from the running application and diagrams built from the implemented system.
+      </div>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>Version 1.0 · 14 November 2026</span></div>
+    </section>
+
+    <!-- ================= 1. EXECUTIVE SUMMARY ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">1</span> Executive Summary</h2>
+      <p class="lead">SafeSignal is a full-stack web application for reporting emergencies and coordinating the response around one shared incident record. It gives each participant exactly the workspace and data they need: citizens report and track, dispatchers verify and assign, responders act and update progress, and administrators govern accounts, reference data and audit activity.</p>
+
+      <p>The project addresses a practical coordination problem. Emergency information is commonly spread across calls, messages and verbal handovers. Different people hold different versions of the same incident, nobody can see the full timeline, and the final outcome is rarely captured in one traceable place. SafeSignal replaces that fragmentation with a structured lifecycle enforced by the backend and visible to every authorized participant.</p>
+
+      <p>The implementation is deliberately a <strong>modular monolith</strong>: one Express API, one React single-page application, one PostgreSQL source of truth, Socket.IO for live delivery, Redis as an optional acceleration layer, and a durable background worker for work that must not be lost. This keeps the system understandable and deployable while preserving clear module boundaries for future growth.</p>
+
+      <div class="callout">
+        <b>Result.</b> The MVP is implemented end to end: authentication, role-based dashboards, SOS reporting, dispatch, assignments, responder progress, notifications, evidence, maps, reports, audit logs and administration. The backend suite passes <strong>26/26 tests</strong> with <strong>89.74% line coverage</strong>; TypeScript, ESLint and Prettier checks pass in both applications; and the repository includes a 16-check Playwright end-to-end suite plus a CI pipeline.
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric"><strong>26/26</strong><span>Backend tests passing</span></div>
+        <div class="metric"><strong>89.74%</strong><span>Line coverage</span></div>
+        <div class="metric"><strong>12</strong><span>Database models</span></div>
+        <div class="metric"><strong>4</strong><span>Access-controlled workspaces</span></div>
+      </div>
+
+      <h3>At a Glance</h3>
+      <table>
+        <thead><tr><th style="width:28%">Dimension</th><th>Summary</th></tr></thead>
+        <tbody>
+        
+        <tr><td><strong>Product type</strong></td><td>Web-based emergency reporting and response coordination platform.</td></tr>
+        <tr><td><strong>Primary users</strong></td><td>Citizen, Dispatcher, Responder and Administrator — four role-based departments.</td></tr>
+        <tr><td><strong>Core workflow</strong></td><td>Report → review → verify → prioritise → assign → accept → en route → arrived → in progress → resolve → close.</td></tr>
+        <tr><td><strong>Source of truth</strong></td><td>PostgreSQL. Real-time events are a delivery mechanism, never the system of record.</td></tr>
+        <tr><td><strong>Frontend</strong></td><td>React 19, TypeScript, Vite 7, Tailwind CSS 4, Leaflet, Socket.IO client.</td></tr>
+        <tr><td><strong>Backend</strong></td><td>Node.js 24, Express 5, TypeScript, Zod 4, Prisma 6, Socket.IO 4.</td></tr>
+        <tr><td><strong>Infrastructure</strong></td><td>PostgreSQL 16, Redis 7, Nginx, Docker Compose.</td></tr>
+        <tr><td><strong>Verification</strong></td><td>Integration tests, coverage, Playwright E2E, latency check, typecheck, lint, format, CI.</td></tr>
+      </tbody>
+      </table>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>1 · Executive Summary</span></div>
+    </section>
+
+    <!-- ================= 2. PROJECT OVERVIEW ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">2</span> Project Overview</h2>
+      <p class="lead">SafeSignal is designed for controlled demonstration, testing and project evaluation. Its purpose is to show how a single, well-structured workflow can replace fragmented emergency coordination without pretending to be an official dispatch service.</p>
+
+      <h3>2.1 What the project is</h3>
+      <p>SafeSignal is a responsive web platform with four authenticated workspaces built on one shared data model. A citizen submits an emergency report with a category, description, contact information and a location. The report becomes an incident with a human-readable reference number and a complete status history. A dispatcher reviews it, sets the priority, and assigns an eligible responder. The responder accepts the assignment and reports each stage of the response. The dispatcher reviews the outcome and closes the incident.</p>
+      <p>Every important action is authorized by the backend, written inside a database transaction where consistency matters, and recorded in an audit log. The frontend is a consumer of those rules, not the place where they live.</p>
+
+      <h3>2.2 Objectives</h3>
+      <div class="two-col">
+        <div>
+          <ul class="checklist">
+            <li>Give citizens a simple, fast emergency reporting experience.</li>
+            <li>Give dispatchers one queue for review, priority and assignment.</li>
+            <li>Let responders manage availability and report progress.</li>
+            <li>Preserve incident, assignment and audit history.</li>
+          </ul>
+        </div>
+        <div>
+          <ul class="checklist">
+            <li>Enforce role and resource-level access on the server.</li>
+            <li>Deliver live updates without losing persistent state.</li>
+            <li>Provide maps, notifications and downloadable reports.</li>
+            <li>Demonstrate secure, testable full-stack engineering.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>2.3 Scope of the MVP</h3>
+      <table>
+        <thead><tr><th style="width:50%">Included in the implemented MVP</th><th>Explicitly outside the MVP</th></tr></thead>
+        <tbody>
+        
+        <tr><td>Registration, login, logout, secure sessions and profile management.</td><td>Direct integration with police, ambulance, fire or rescue dispatch systems.</td></tr>
+        <tr><td>Citizen SOS reporting, location capture, evidence and cancellation.</td><td>SMS or email notification delivery.</td></tr>
+        <tr><td>Dispatcher verification, rejection, priority, assignment and closure.</td><td>Guaranteed responder availability or response times.</td></tr>
+        <tr><td>Responder acceptance, progress, resolution and availability.</td><td>Multi-region routing, advanced GIS or predictive analytics.</td></tr>
+        <tr><td>Real-time updates, notifications, maps and incident reports.</td><td>Production-grade high availability, multi-tenancy or external agency onboarding.</td></tr>
+        <tr><td>Administrator user, role, status, category and audit management.</td><td>Mobile native applications and third-party identity providers.</td></tr>
+      </tbody>
+      </table>
+
+      <div class="callout warn"><b>Operational boundary.</b> SafeSignal coordinates information. It does not itself summon help. Any future connection to a real emergency organization requires formal authorization, operational agreements, security review, privacy controls and independent testing.</div>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>2 · Project Overview</span></div>
+    </section>
+
+    <!-- ================= 3. PROBLEM ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">3</span> The Problem</h2>
+      <p class="lead">Emergency coordination fails quietly when information is fragmented. The problem is rarely a lack of effort; it is a lack of one shared, trusted record that every participant can act on.</p>
+
+      <h3>3.1 Fragmented communication</h3>
+      <p>A report may begin as a phone call, continue in a messaging app, and finish as a verbal handover. Each channel holds part of the story. Details are repeated, lost or contradicted, and no participant can confidently answer the basic questions: what happened, who is handling it, and what is the current status?</p>
+
+      <h3>3.2 No shared source of truth</h3>
+      <p>When the incident record lives in several places, the operational picture diverges. A dispatcher may believe a responder is en route while the responder has already arrived. A citizen may have no way to know whether the report was received, verified or assigned. Reports and statistics become unreliable because they are reconstructed after the fact rather than captured as the work happens.</p>
+
+      <h3>3.3 Weak accountability and reporting</h3>
+      <p>Without a structured history, it is difficult to determine who verified a report, who assigned a responder, why an assignment was rejected, or when an incident was resolved. That weakens accountability and makes process improvement guesswork.</p>
+
+      <div class="callout warn">
+        <b>The core gap.</b> Emergency information needs a single lifecycle with explicit ownership, validated transitions and a durable audit trail — not another chat channel.
+      </div>
+
+      <h3>3.4 Practical consequences</h3>
+      <table>
+        <thead><tr><th style="width:34%">Problem</th><th>Operational impact</th></tr></thead>
+        <tbody>
+        
+        <tr><td>Incident details are spread across channels</td><td>Repeated questions, incomplete reports and slower triage.</td></tr>
+        <tr><td>Responder availability is unclear</td><td>Assignments go to the wrong person or remain unassigned.</td></tr>
+        <tr><td>Citizens cannot see progress</td><td>Duplicate reports, uncertainty and loss of trust.</td></tr>
+        <tr><td>Assignment history is overwritten</td><td>Rejection reasons and reassignment decisions disappear.</td></tr>
+        <tr><td>Outcomes are not captured consistently</td><td>No reliable record for review, reporting or improvement.</td></tr>
+      </tbody>
+      </table>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>3 · The Problem</span></div>
+    </section>
+
+    <!-- ================= 4. SOLUTION ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">4</span> The Proposed Solution</h2>
+      <p class="lead">SafeSignal introduces one coordinated workflow around one incident record. Each role sees the same truth through the lens it is authorized to use, and every transition is validated before it becomes real.</p>
+
+      <figure>
+        <img src="diagrams/workflow.png" alt="SafeSignal end-to-end emergency workflow across Citizen, Dispatcher and Responder lanes">
+        <figcaption><b>Figure 1.</b> The end-to-end workflow. The happy path runs from report to closure; rejection and cancellation are explicit exits rather than silent deletions. Every transition is validated, persisted with status history and audited.</figcaption>
+      </figure>
+
+      <h3>4.1 One shared lifecycle</h3>
+      <p>An incident moves through a defined sequence. Direct API requests cannot skip stages or force an invalid transition; the lifecycle rules are checked in the service layer before the database is changed.</p>
+      <div class="lifecycle">
+        <span class="state">SUBMITTED</span><span class="arrow">→</span>
+        <span class="state">UNDER_REVIEW</span><span class="arrow">→</span>
+        <span class="state">VERIFIED</span><span class="arrow">→</span>
+        <span class="state">ASSIGNED</span><span class="arrow">→</span>
+        <span class="state">ACCEPTED</span><span class="arrow">→</span>
+        <span class="state">EN_ROUTE</span><span class="arrow">→</span>
+        <span class="state">ARRIVED</span><span class="arrow">→</span>
+        <span class="state">IN_PROGRESS</span><span class="arrow">→</span>
+        <span class="state">RESOLVED</span><span class="arrow">→</span>
+        <span class="state">CLOSED</span>
+        <span class="arrow">+</span>
+        <span class="state exit">REJECTED</span>
+        <span class="state exit">CANCELLED</span>
+      </div>
+
+      <h3>4.2 Two records, one truth</h3>
+      <p>Incidents and assignments are separate records. An incident describes the emergency and its lifecycle; an assignment describes who was asked to respond, when, and with what outcome. Reassignment creates a new assignment instead of overwriting the previous one, so the operational history remains intact.</p>
+
+      <h3>4.3 Designed for imperfect conditions</h3>
+      <div class="feature-grid">
+        <div class="feature"><div class="icon">↻</div><h4>Idempotent reporting</h4><p>An optional idempotency key prevents a retried SOS from creating a duplicate incident. The unique index resolves concurrent retries.</p></div>
+        <div class="feature"><div class="icon">◈</div><h4>Transactional changes</h4><p>Status changes use conditional updates and transactions. A stale or conflicting transition is rejected instead of partially applied.</p></div>
+        <div class="feature"><div class="icon">⟳</div><h4>Reconnect recovery</h4><p>Socket.IO delivers live updates, but the client reloads authoritative state through REST after reconnecting. The database remains the source of truth.</p></div>
+        <div class="feature"><div class="icon">▣</div><h4>Durable background work</h4><p>Notification work that fails inline is queued in PostgreSQL and retried by a worker with capped exponential backoff.</p></div>
+      </div>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>4 · The Proposed Solution</span></div>
+    </section>
+
+    <!-- ================= 5. CORE FEATURES ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">5</span> Core Features</h2>
+      <p class="lead">The product is organized around six user-facing capabilities. Each is backed by a real API, authorization rules, persistent state and an audit trail — not only a frontend screen.</p>
+
+      <div class="feature-grid">
+        <div class="feature">
+          <div class="icon">!</div>
+          <h4>1 · Emergency SOS reporting</h4>
+          <p>Citizens choose a category, describe the emergency, provide contact details and share coordinates or a clear landmark. Browser geolocation and a map picker are supported, with manual entry as the fallback. Optional supporting evidence can be attached.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">⌖</div>
+          <h4>2 · Live incident tracking</h4>
+          <p>A Leaflet/OpenStreetMap view shows permitted incident locations with priority-coloured markers, status and responder progress. Live events refresh the view; REST reload restores state after a disconnect.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">⇄</div>
+          <h4>3 · Dispatch management</h4>
+          <p>Dispatchers work a single queue: review, verify or reject with a reason, set priority, inspect responder availability, assign or reassign, monitor progress and close resolved incidents.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">◉</div>
+          <h4>4 · Responder operations</h4>
+          <p>Responders manage availability and profile details, accept or reject assignments, and report each stage from en route to resolved with resolution notes. Only their own assigned incidents are visible.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">◔</div>
+          <h4>5 · Notifications and live events</h4>
+          <p>In-app notifications and authenticated Socket.IO rooms inform the right users about new incidents, assignments, status changes and resolutions. Delivery failure cannot undo a committed operation.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">▤</div>
+          <h4>6 · History, reports and audit</h4>
+          <p>Incident statistics, category/priority/status breakdowns, recent records and CSV export give an operational view. Status history and audit logs preserve who did what, when and to which record.</p>
+        </div>
+      </div>
+
+      <figure>
+        <img src="images/01-home.png" alt="SafeSignal public landing page with emergency response messaging and sign-in actions">
+        <figcaption><b>Figure 2.</b> The public landing page. The product positions itself as coordination software, not a replacement for official emergency numbers, and makes the demo path obvious.</figcaption>
+      </figure>
+
+      <h3>5.1 What makes the feature set coherent</h3>
+      <p>The six features are not independent demos. They share the same incident identity, the same lifecycle rules and the same authorization model. A notification references the same incident that dispatch sees; the map plots the same coordinates the citizen submitted; the report counts the same records the responder updated. That shared record is what turns separate screens into a workflow.</p>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>5 · Core Features</span></div>
+    </section>
+
+    <!-- ================= 6. DEPARTMENTS ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">6</span> Departments &amp; Access</h2>
+
+      <div class="callout info">
+        <b>Terminology.</b> SafeSignal has <strong>four role-based departments</strong>. There is no separate <code>Department</code> table: an account belongs to one department through <code>Role.name</code> (<code>CITIZEN</code>, <code>DISPATCHER</code>, <code>RESPONDER</code>, <code>ADMIN</code>). This keeps the MVP simple while still giving each department a distinct workspace, navigation and backend permission set.
+      </div>
+
+      <figure>
+        <img src="diagrams/departments-access.png" alt="Diagram of the four SafeSignal departments: Citizen, Dispatch, Response and Administration">
+        <figcaption><b>Figure 3.</b> The four departments and their primary access. The backend applies session, account-status, role and resource-scope checks on every request; the UI merely reflects those rules.</figcaption>
+      </figure>
+
+      <h3>6.1 Department summary</h3>
+      <table>
+        <thead><tr><th style="width:15%">#</th><th style="width:19%">Department</th><th style="width:17%">Role code</th><th>Primary responsibility</th><th style="width:19%">Demo account</th></tr></thead>
+        <tbody>
+        
+        <tr><td>01</td><td><strong>Citizen</strong></td><td><code>CITIZEN</code></td><td>Report emergencies and track personal incidents.</td><td><code>citizen@safesignal.local</code></td></tr>
+        <tr><td>02</td><td><strong>Dispatch</strong></td><td><code>DISPATCHER</code></td><td>Triage reports, set priority and coordinate assignments.</td><td><code>dispatcher@safesignal.local</code></td></tr>
+        <tr><td>03</td><td><strong>Response</strong></td><td><code>RESPONDER</code></td><td>Accept assignments and report response progress.</td><td><code>responder@safesignal.local</code></td></tr>
+        <tr><td>04</td><td><strong>Administration</strong></td><td><code>ADMIN</code></td><td>Govern accounts, roles, categories and audit activity.</td><td><code>admin@safesignal.local</code></td></tr>
+      </tbody>
+      </table>
+      <p class="small">Demo password for all seeded local accounts: <code>Password123!</code>. The seeder also provisions <code>backup@safesignal.local</code> as a second responder. Production uses <code>seed-production.ts</code> and never creates demo accounts.</p>
+
+      <h3>6.2 Access matrix</h3>
+      <table>
+        <thead><tr><th>Capability</th><th>Citizen</th><th>Dispatcher</th><th>Responder</th><th>Administrator</th></tr></thead>
+        <tbody>
+        
+        <tr><td>Register / sign in / manage own profile</td><td><span class="tag yes">YES</span></td><td><span class="tag yes">YES</span></td><td><span class="tag yes">YES</span></td><td><span class="tag yes">YES</span></td></tr>
+        <tr><td>Submit emergency report</td><td><span class="tag yes">YES</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td></tr>
+        <tr><td>View incidents</td><td><span class="tag scope">OWN</span></td><td><span class="tag scope">ALL</span></td><td><span class="tag scope">ASSIGNED</span></td><td><span class="tag scope">ALL · READ</span></td></tr>
+        <tr><td>Review / verify / reject report</td><td><span class="tag no">NO</span></td><td><span class="tag yes">YES</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td></tr>
+        <tr><td>Set incident priority</td><td><span class="tag no">NO</span></td><td><span class="tag yes">YES</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td></tr>
+        <tr><td>Assign / reassign responder</td><td><span class="tag no">NO</span></td><td><span class="tag yes">YES</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td></tr>
+        <tr><td>Accept / reject assignment</td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td><td><span class="tag yes">YES</span></td><td><span class="tag no">NO</span></td></tr>
+        <tr><td>Update response progress / resolve</td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td><td><span class="tag yes">YES</span></td><td><span class="tag no">NO</span></td></tr>
+        <tr><td>Close resolved incident</td><td><span class="tag no">NO</span></td><td><span class="tag yes">YES</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td></tr>
+        <tr><td>Cancel eligible own incident</td><td><span class="tag yes">YES</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td></tr>
+        <tr><td>Attach / remove evidence</td><td><span class="tag scope">OWN</span></td><td><span class="tag scope">ANY</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td></tr>
+        <tr><td>Manage users, roles, status</td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td><td><span class="tag yes">YES</span></td></tr>
+        <tr><td>Manage categories / view audit logs</td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td><td><span class="tag no">NO</span></td><td><span class="tag yes">YES</span></td></tr>
+      </tbody>
+      </table>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>6 · Departments &amp; Access</span></div>
+    </section>
+
+    <!-- ================= 6B. ADMIN + SETUP ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2>Administrator Access in Detail</h2>
+      <p class="lead">The administrator department is a governance role, not a super-dispatcher. It manages the platform and its accountability records while operational incident actions stay with dispatch and response.</p>
+
+      <h3>What an administrator can do</h3>
+      <table>
+        <thead><tr><th style="width:31%">Area</th><th>Implemented access</th></tr></thead>
+        <tbody>
+        
+        <tr><td><strong>User accounts</strong></td><td>List and filter accounts by role with pagination; create an account in any of the four roles; correct permitted profile fields (<code>fullName</code>, <code>phone</code>).</td></tr>
+        <tr><td><strong>Role management</strong></td><td>Change another user's role. The user's live socket is disconnected so the new role's rooms apply on reconnect.</td></tr>
+        <tr><td><strong>Account status</strong></td><td>Set <code>ACTIVE</code>, <code>INACTIVE</code> or <code>SUSPENDED</code>. A non-active status revokes all active sessions and disconnects live connections immediately.</td></tr>
+        <tr><td><strong>Self-protection</strong></td><td>An administrator cannot change their own role or account status through these endpoints.</td></tr>
+        <tr><td><strong>Categories</strong></td><td>List active categories (and inactive ones for administration), create categories, rename or re-describe them, deactivate or reactivate them. Existing incidents keep their category.</td></tr>
+        <tr><td><strong>Audit review</strong></td><td>Paginated audit logs with actor details and an action filter.</td></tr>
+        <tr><td><strong>Operational read</strong></td><td>Incident list, detail, history, statistics, evidence metadata and downloads across the full incident set.</td></tr>
+        <tr><td><strong>Reports</strong></td><td>Aggregate statistics and CSV export through the reports section of the dashboard.</td></tr>
+      </tbody>
+      </table>
+
+      <h3>Guardrails</h3>
+      <ul class="checklist cross">
+        <li>No self role change and no self status change.</li>
+        <li>No dispatch actions: verify, reject, prioritise, assign, reassign and close remain dispatcher-only.</li>
+        <li>No responder actions: accept, reject, progress and resolve remain responder-only.</li>
+        <li>No incident creation, evidence upload or evidence deletion.</li>
+        <li>No password or password-hash access through administrative endpoints.</li>
+        <li>No silent audit modification; audit records are append-only in the application flow.</li>
+      </ul>
+
+      <div class="callout">
+        <b>Design note.</b> Administrators currently have read access to all incidents because the shared incident scope treats <code>ADMIN</code> as an operational read role. Dispatch powers are still separately guarded. If stricter separation is required, the admin scope can be narrowed without changing the dispatch or responder paths.
+      </div>
+
+      <h3>Local department setup</h3>
+      <div class="code"><span class="muted"># from the repository root</span>
+cd backend
+npx prisma migrate deploy
+npm run db:seed:demo
+
+<span class="muted"># start the local stack</span>
+docker compose up -d
+
+<span class="muted"># open the app</span>
+http://127.0.0.1:8080</div>
+      <p>All seeded demo accounts use <code>Password123!</code>. The full operational setup, verification SQL, endpoint matrix and production notes are in <code>docs/01-project-overview/departments-and-access-setup.md</code>.</p>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>6 · Departments &amp; Access</span></div>
+    </section>
+
+    <!-- ================= 7. WALKTHROUGH ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">7</span> Product Walkthrough</h2>
+      <p class="lead">The screens below are real captures from the running application. They show how the same design language changes meaning by department: emerald for citizens, blue for dispatch, amber for response and violet for administration.</p>
+
+      <figure>
+        <img src="images/02-citizen-dashboard.png" alt="Citizen dashboard with emergency report form and personal incident list">
+        <figcaption><b>Figure 4.</b> Citizen workspace. Reporting, location capture, personal incidents and live status sit on one page. The citizen sees a reduced assignment projection, not internal dispatch notes or responder identities.</figcaption>
+      </figure>
+
+      <div class="shot-grid">
+        <figure>
+          <img src="images/03-dispatcher-dashboard.png" alt="Dispatcher dashboard with incident queue, incident details and available responders">
+          <figcaption><b>Figure 5.</b> Dispatch control: queue, filters, priority and responder availability in one operational view.</figcaption>
+        </figure>
+        <figure>
+          <img src="images/04-responder-dashboard.png" alt="Responder dashboard with availability, responder profile and assignments">
+          <figcaption><b>Figure 6.</b> Response operations: availability, profile and assigned-incident progress.</figcaption>
+        </figure>
+      </div>
+
+      <figure>
+        <img src="images/05-admin-dashboard.png" alt="Administrator dashboard with account metrics, user creation and account list">
+        <figcaption><b>Figure 7.</b> Administration workspace: account totals, user creation, role/status controls and audit access. Administrators can govern the platform but cannot perform dispatch actions.</figcaption>
+      </figure>
+
+      <div class="callout info">
+        <b>Consistency by design.</b> Every workspace uses the same shell, notification bell, theme control, session indicator and responsive navigation. What changes is the scope of data and the actions the backend permits, not the basic interaction model.
+      </div>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>7 · Product Walkthrough</span></div>
+    </section>
+
+    <!-- ================= 8. ARCHITECTURE ================= -->
+    <section class="chapter" id="architecture">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">8</span> System Architecture</h2>
+      <p class="lead">SafeSignal uses a modular monolith: one deployable API with clear internal modules, one React SPA, PostgreSQL as the source of truth, and supporting infrastructure that can degrade without taking the core workflow down.</p>
+
+      <figure>
+        <img src="diagrams/architecture.png" alt="SafeSignal architecture diagram showing client, Nginx, Express API modules, worker, PostgreSQL and Redis">
+        <figcaption><b>Figure 8.</b> System architecture. REST and Socket.IO share the same authentication and authorization model. Redis accelerates rate limiting and live fan-out but is not required for incident persistence.</figcaption>
+      </figure>
+
+      <h3>8.1 Layers and responsibilities</h3>
+      <table>
+        <thead><tr><th style="width:20%">Layer</th><th>Responsibility</th></tr></thead>
+        <tbody>
+        
+        <tr><td><strong>Client</strong></td><td>React 19 SPA with code-split role dashboards, accessible components, Leaflet map, notification bell, theme control and a Socket.IO client that recovers through REST.</td></tr>
+        <tr><td><strong>Edge</strong></td><td>Nginx serves the built SPA, proxies <code>/api/*</code> to Express and upgrades <code>/socket.io/*</code>. One trusted proxy hop preserves client IP and protocol handling.</td></tr>
+        <tr><td><strong>API</strong></td><td>Express 5 with security headers, CORS, CSRF protection, rate limiting, request correlation IDs, Zod validation, authentication, role guards and modular services.</td></tr>
+        <tr><td><strong>Domain modules</strong></td><td>Auth, incidents, assignments, responders, categories, notifications, evidence, administration and audit. Each module owns its routes, validation and service rules.</td></tr>
+        <tr><td><strong>Real-time</strong></td><td>Socket.IO gateway with authenticated rooms by user, role and incident. Events are notifications of committed changes, never the change itself.</td></tr>
+        <tr><td><strong>Worker</strong></td><td>Polls durable <code>BackgroundJob</code> rows, claims work, retries with capped exponential backoff and records terminal failures.</td></tr>
+        <tr><td><strong>Data</strong></td><td>PostgreSQL 16 through Prisma 6, with versioned migrations. Redis 7 provides rate-limit counters and the Socket.IO adapter.</td></tr>
+      </tbody>
+      </table>
+
+      <h3>8.2 Technology stack</h3>
+      <table>
+        <thead><tr><th style="width:22%">Concern</th><th style="width:30%">Technology</th><th>Why it is used</th></tr></thead>
+        <tbody>
+        
+        <tr><td>Frontend</td><td>React 19 · TypeScript · Vite 7</td><td>Fast SPA development, type safety and role-based code splitting.</td></tr>
+        <tr><td>Styling</td><td>Tailwind CSS 4</td><td>Consistent responsive design, dark mode and accessible states.</td></tr>
+        <tr><td>API</td><td>Node.js 24 · Express 5 · TypeScript</td><td>Small operational surface, explicit middleware and typed services.</td></tr>
+        <tr><td>Validation</td><td>Zod 4</td><td>Request schemas at the boundary, with structured validation errors.</td></tr>
+        <tr><td>Database</td><td>PostgreSQL 16 · Prisma 6.19</td><td>Relational integrity, transactions, migrations and typed queries.</td></tr>
+        <tr><td>Authentication</td><td>Argon2id · HttpOnly sessions</td><td>Slow password hashing and server-revocable session cookies.</td></tr>
+        <tr><td>Real-time</td><td>Socket.IO 4</td><td>Authenticated live events with reconnect and REST recovery.</td></tr>
+        <tr><td>Cache / fan-out</td><td>Redis 7</td><td>Shared rate-limit state and multi-instance socket adapter.</td></tr>
+        <tr><td>Maps</td><td>Leaflet · OpenStreetMap</td><td>Open map rendering without a paid tile dependency.</td></tr>
+        <tr><td>Runtime</td><td>Docker · Docker Compose · Nginx</td><td>Reproducible local stack and a simple reverse-proxy deployment.</td></tr>
+      </tbody>
+      </table>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>8 · System Architecture</span></div>
+    </section>
+
+    <!-- ================= 9. DATA / REALTIME ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">9</span> Data, Real-Time &amp; Reliability</h2>
+
+      <h3>9.1 Core data model</h3>
+      <p>The schema has 12 models and 6 enums. The central relationship is simple: a user submits incidents, an incident has a category, status history, assignments and evidence, and an assignment connects one incident to one responder and the dispatcher who assigned it.</p>
+      <table>
+        <thead><tr><th style="width:28%">Model</th><th>Purpose</th></tr></thead>
+        <tbody>
+        
+        <tr><td><code>Role</code> / <code>User</code></td><td>Canonical department code and the account that belongs to it.</td></tr>
+        <tr><td><code>Session</code></td><td>Hashed session token, expiry and revocation for server-side logout.</td></tr>
+        <tr><td><code>EmergencyCategory</code></td><td>Active/inactive reporting categories with stable incident references.</td></tr>
+        <tr><td><code>Incident</code></td><td>Reference number, citizen, category, description, contact, location, priority, status and resolution.</td></tr>
+        <tr><td><code>IncidentStatusHistory</code></td><td>Append-only transition record with actor, previous/new status and reason.</td></tr>
+        <tr><td><code>ResponderProfile</code></td><td>Responder type, availability and operational notes.</td></tr>
+        <tr><td><code>Assignment</code></td><td>Incident ↔ responder link, assignment status, notes, rejection and reassignment reasons.</td></tr>
+        <tr><td><code>Evidence</code></td><td>Validated file metadata and bytes, scoped to an incident and uploader.</td></tr>
+        <tr><td><code>BackgroundJob</code></td><td>Durable async work with attempts, retry time and terminal error.</td></tr>
+        <tr><td><code>AuditLog</code></td><td>Actor, action, entity, metadata and timestamp for important operations.</td></tr>
+        <tr><td><code>Notification</code></td><td>Per-user in-app message with read state and related entity.</td></tr>
+      </tbody>
+      </table>
+
+      <h3>9.2 Real-time behaviour</h3>
+      <p>Socket.IO connections are authenticated with the same session cookie as REST. The server joins a user to authorized rooms and emits events only after a database change commits. If a client disconnects, it reloads authoritative state through REST; it never assumes the missed events can be reconstructed from memory. This is the key reliability rule: <strong>events are hints, the database is truth</strong>.</p>
+
+      <h3>9.3 Background jobs</h3>
+      <p>Work that must not block a request — or that failed inline and needs a retry — is written to <code>BackgroundJob</code>. The worker claims pending rows, increments attempts, runs the handler, and either marks the job done or schedules a retry. When attempts exceed <code>maxAttempts</code>, the job becomes <code>FAILED</code> with the last error preserved. This keeps notification delivery from silently disappearing across restarts.</p>
+
+      <h3>9.4 Deployment topology</h3>
+      <table>
+        <thead><tr><th style="width:25%">Component</th><th style="width:25%">Local address</th><th>Notes</th></tr></thead>
+        <tbody>
+        
+        <tr><td>Frontend + Nginx</td><td><code>127.0.0.1:8080</code></td><td>Serves the SPA and proxies API/socket traffic.</td></tr>
+        <tr><td>Backend API</td><td>internal <code>4100</code></td><td>Not published directly in the container stack; reached through Nginx.</td></tr>
+        <tr><td>PostgreSQL</td><td><code>127.0.0.1:55432</code></td><td>Persistent named volume; health-checked.</td></tr>
+        <tr><td>Redis</td><td><code>127.0.0.1:6381</code></td><td>AOF-backed counters and socket adapter; optional at runtime.</td></tr>
+      </tbody>
+      </table>
+
+      <div class="callout">
+        <b>Failure posture.</b> A Redis outage degrades rate limiting and live fan-out but does not stop incident persistence. A delivery failure is queued for retry. A stale status transition is rejected rather than partially applied. The core workflow is designed to fail visibly and recoverably, not silently.
+      </div>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>9 · Data, Real-Time &amp; Reliability</span></div>
+    </section>
+
+    <!-- ================= 10. SECURITY ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">10</span> Security &amp; Privacy</h2>
+      <p class="lead">SafeSignal handles descriptions, contact details and locations. Security is therefore part of the application model, not a deployment afterthought.</p>
+
+      <h3>10.1 Implemented controls</h3>
+      <table>
+        <thead><tr><th style="width:30%">Control</th><th>Implementation</th></tr></thead>
+        <tbody>
+        
+        <tr><td><strong>Password storage</strong></td><td>Argon2id hashing through <code>@node-rs/argon2</code>; plaintext passwords are never stored or logged.</td></tr>
+        <tr><td><strong>Session handling</strong></td><td>Random session tokens, SHA-256 hashed at rest, HttpOnly cookies, expiry and explicit revocation on logout or account deactivation.</td></tr>
+        <tr><td><strong>Authorization</strong></td><td>Backend RBAC plus resource-level scope: citizen ownership, responder assignment membership, operational scope for dispatch/admin.</td></tr>
+        <tr><td><strong>CSRF</strong></td><td>Double-submit token for cookie-authenticated state-changing requests, with a matching header and cookie.</td></tr>
+        <tr><td><strong>CORS and headers</strong></td><td>Restricted origin allowlist, security headers, no <code>x-powered-by</code>, JSON body limit and upload cap.</td></tr>
+        <tr><td><strong>Rate limiting</strong></td><td>Per-IP and per-account login buckets, registration limit and incident-creation limit, backed by Redis when available.</td></tr>
+        <tr><td><strong>Input validation</strong></td><td>Zod schemas for bodies, params and queries; typed service inputs; lifecycle validation before writes.</td></tr>
+        <tr><td><strong>Evidence</strong></td><td>Magic-byte type sniffing (JPEG, PNG, WebP, PDF), 5 MB cap, sanitized filenames, private no-store download and scoped access.</td></tr>
+        <tr><td><strong>Audit and logging</strong></td><td>Important actions recorded with actor and metadata; request correlation IDs on errors; sensitive payloads excluded from logs.</td></tr>
+        <tr><td><strong>Account lifecycle</strong></td><td>Inactive/suspended accounts cannot use existing sessions; sessions are revoked and sockets disconnected immediately.</td></tr>
+      </tbody>
+      </table>
+
+      <h3>10.2 Privacy rules</h3>
+      <ul class="checklist">
+        <li>Citizens see only their own incidents, with a reduced assignment projection.</li>
+        <li>Responders see only incidents connected to their assignments.</li>
+        <li>Dispatchers see the operational scope required to coordinate response.</li>
+        <li>Administrators receive administrative access; private incident detail is not exposed through account-management endpoints.</li>
+        <li>Evidence downloads are authorization-checked and marked <code>private, no-store</code>.</li>
+        <li>Audit and error logs avoid passwords, tokens and unnecessary personal data.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Not a production security certification.</b> The MVP does not include MFA, field-level encryption, a WAF, external identity federation, formal penetration testing or a published incident-response program. Real-world deployment would require those controls and an independent security review.
+      </div>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>10 · Security &amp; Privacy</span></div>
+    </section>
+
+    <!-- ================= 11. QUALITY ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">11</span> Quality &amp; Verification</h2>
+      <p class="lead">The project was verified with real checks against the implementation, not with claims in documentation. The results below are the current recorded results for this working tree.</p>
+
+      <h3>11.1 Verification results</h3>
+      <table>
+        <thead><tr><th style="width:31%">Check</th><th style="width:22%">Result</th><th>What it covers</th></tr></thead>
+        <tbody>
+        
+        <tr><td>Backend integration tests</td><td><strong>26/26 pass</strong></td><td>Authentication, RBAC, reporting, dispatch, assignment, responder progress, cancellation, evidence, notifications and administration against an isolated test database.</td></tr>
+        <tr><td>Line coverage</td><td><strong>89.74%</strong></td><td>Node's built-in coverage instrumentation across backend source files.</td></tr>
+        <tr><td>Branch coverage</td><td><strong>71.43%</strong></td><td>Coverage of decision paths; the remaining branches are concentrated in error and fallback paths.</td></tr>
+        <tr><td>Function coverage</td><td><strong>88.84%</strong></td><td>Exported and internal service functions exercised by the suite.</td></tr>
+        <tr><td>TypeScript</td><td><strong>Pass</strong></td><td><code>tsc --noEmit</code> in both backend and frontend.</td></tr>
+        <tr><td>ESLint + Prettier</td><td><strong>Pass</strong></td><td>Flat-config lint and formatting checks in both applications.</td></tr>
+        <tr><td>Prisma schema + migration</td><td><strong>Pass</strong></td><td><code>prisma validate</code> and migration application against the test database.</td></tr>
+        <tr><td>E2E suite</td><td><strong>16 checks</strong></td><td>Report → review → verify → assign → accept → respond → resolve → close, cancellation, reassignment, evidence, admin, reconnect, location and mobile navigation.</td></tr>
+        <tr><td>Latency check</td><td><strong>Worst p95 12.7 ms</strong></td><td>Recorded local run against the common read endpoints; the pass threshold is 500 ms p95.</td></tr>
+        <tr><td>CI pipeline</td><td><strong>Configured</strong></td><td><code>.github/workflows/ci.yml</code> runs the full-stack build, migration, tests and Playwright E2E, then uploads the report.</td></tr>
+      </tbody>
+      </table>
+
+      <h3>11.2 Test strategy</h3>
+      <p>Backend tests run through the project's TypeScript test runner against an isolated <code>*_test</code> database, so they do not touch development data. Supertest exercises the HTTP surface while tests assert database state and authorization outcomes. Playwright drives the real browser against the running frontend and backend, including mobile navigation and recovery after a socket disconnect.</p>
+
+      <h3>11.3 Static quality and maintainability</h3>
+      <div class="two-col">
+        <div>
+          <ul class="checklist">
+            <li>TypeScript strict mode in both applications.</li>
+            <li>ESLint flat configs with unused-variable checks.</li>
+            <li>Prettier formatting for code and tests.</li>
+            <li>Versioned Prisma migrations, including the background-job status enum.</li>
+          </ul>
+        </div>
+        <div>
+          <ul class="checklist">
+            <li>Separate test database and rerunnable E2E flow.</li>
+            <li>Documented API, security, testing and deployment material.</li>
+            <li>Coverage command uses Node's built-in instrumentation, avoiding an extra dependency.</li>
+            <li>CI runs the same checks locally and on GitHub Actions.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <b>Verification note.</b> The 26 backend tests, coverage figures, typecheck, lint, format and migration checks were run for this working tree. The Playwright suite exists and is wired into CI, but it was not re-executed for this report; the last recorded suite describes 16 checks. The latency figure is from the recorded validation run, not a new measurement.
+      </div>
+
+      <h3>11.4 What the tests prove — and what they do not</h3>
+      <p>The suite proves that the critical workflow works through the backend, that unauthorized roles are rejected, that state transitions cannot be forced, and that the main failure paths return safe errors. It does not prove production capacity, geographic accuracy, real emergency-service integration or security against a determined external attacker. Those require different environments and independent review.</p>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>11 · Quality &amp; Verification</span></div>
+    </section>
+
+    <!-- ================= 12. LIMITATIONS ================= -->
+    <section class="chapter">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">12</span> Limitations &amp; Future Work</h2>
+      <p class="lead">A credible report states what the system does not do. The boundaries below are deliberate for an MVP and define the next engineering decisions.</p>
+
+      <h3>12.1 Current limitations</h3>
+      <table>
+        <thead><tr><th style="width:30%">Limitation</th><th>Impact / explanation</th></tr></thead>
+        <tbody>
+        
+        <tr><td><strong>Demonstration scope</strong></td><td>No connection to real police, ambulance, fire or rescue systems. The platform coordinates information only.</td></tr>
+        <tr><td><strong>Departments are roles</strong></td><td>There is no separate department/tenant entity, no per-department hierarchy and no multi-organization routing. Adding a true <code>Department</code> model would be a schema and authorization change.</td></tr>
+        <tr><td><strong>No SMS or email</strong></td><td>Notifications are in-app and real-time only. Delivery outside the browser is future work.</td></tr>
+        <tr><td><strong>Location is user/device supplied</strong></td><td>Coordinates and landmarks are not independently verified; map availability depends on OpenStreetMap tiles.</td></tr>
+        <tr><td><strong>Evidence in PostgreSQL</strong></td><td>Files are stored as bytes with a 5 MB cap. Object storage, virus scanning and retention policies would be required at larger scale.</td></tr>
+        <tr><td><strong>Single-region deployment</strong></td><td>No multi-region failover, formal HA, backup automation or disaster-recovery drill in the MVP.</td></tr>
+        <tr><td><strong>No MFA</strong></td><td>Authentication is password + server-side session. MFA and identity federation are not implemented.</td></tr>
+        <tr><td><strong>Administrative read breadth</strong></td><td>Administrators can read all incidents. Dispatch powers remain separated, but stricter data minimization may be desirable.</td></tr>
+      </tbody>
+      </table>
+
+      <h3>12.2 Recommended next steps</h3>
+      <div class="feature-grid">
+        <div class="feature"><div class="icon">01</div><h4>Operational integrations</h4><p>Connect authorized agencies through signed APIs and webhooks, with explicit consent, audit and fallback procedures.</p></div>
+        <div class="feature"><div class="icon">02</div><h4>Notification channels</h4><p>Add SMS and email delivery behind the existing durable job queue, with provider retries and delivery receipts.</p></div>
+        <div class="feature"><div class="icon">03</div><h4>Evidence at scale</h4><p>Move files to private object storage, add malware scanning, signed URLs and retention rules.</p></div>
+        <div class="feature"><div class="icon">04</div><h4>Identity hardening</h4><p>Add MFA, session-device visibility, suspicious-login alerts and optional SSO for operational accounts.</p></div>
+        <div class="feature"><div class="icon">05</div><h4>Geospatial maturity</h4><p>Add geocoding, service areas, nearest-responder logic and map clustering while keeping location uncertainty explicit.</p></div>
+        <div class="feature"><div class="icon">06</div><h4>Operations and scale</h4><p>Add metrics, tracing, alerting, backup drills, load testing and a multi-instance deployment with Redis-backed sockets.</p></div>
+      </div>
+
+      <div class="callout warn"><b>Readiness statement.</b> The MVP is ready for controlled demonstration and evaluation. It is not ready for real emergency operations without the integrations, legal agreements, operational training, security review and availability guarantees listed above.</div>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>12 · Limitations &amp; Future Work</span></div>
+    </section>
+
+    <!-- ================= 13. CONCLUSION ================= -->
+    <section class="chapter" id="conclusion">
+      <div class="chapter-rule"></div>
+      <h2><span class="num">13</span> Conclusion</h2>
+      <p class="lead">SafeSignal delivers the central promise of the project: one emergency record, four accountable departments, and a response timeline that does not disappear when the browser closes.</p>
+
+      <p>The platform takes a coordination problem that is usually spread across people and channels and turns it into a validated lifecycle. Citizens can report and follow. Dispatchers can triage and assign. Responders can act and update. Administrators can govern accounts and audit activity. Each department has a distinct workspace, but all of them operate on the same incident truth.</p>
+
+      <p>The engineering choices support that promise. PostgreSQL is authoritative. Every critical change is authorized and recorded. State transitions are explicit. Real-time delivery is an accelerator, not the record. Failures are retried, rejected or surfaced rather than silently swallowed. The codebase is typed, linted, formatted, tested and documented, with a CI pipeline that repeats the important checks.</p>
+
+      <p>The result is a credible MVP and a strong foundation. It is honest about its boundaries: it is not an official emergency service, it does not guarantee response, and it has not been certified for production operations. Those are the right next problems to solve — with real partners, real operational agreements and independent security review — rather than features to claim prematurely.</p>
+
+      <h3>13.1 Delivery summary</h3>
+      <table>
+        <thead><tr><th style="width:24%">Area</th><th>Delivered outcome</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Identity &amp; access</strong></td><td>Four role-based departments, server-enforced RBAC, resource-level ownership/assignment scope, revocable sessions and an account-status lifecycle.</td></tr>
+          <tr><td><strong>Emergency workflow</strong></td><td>Report → review → verify → priority → assign → accept → en route → arrived → in progress → resolve → close, with explicit rejection and cancellation exits.</td></tr>
+          <tr><td><strong>Operational tooling</strong></td><td>Dispatch queue, responder availability, reassignment history, live map, notifications, evidence, incident reports and CSV export.</td></tr>
+          <tr><td><strong>Accountability</strong></td><td>Status history, append-only audit records, request correlation IDs, private evidence access and administrator oversight.</td></tr>
+          <tr><td><strong>Verification</strong></td><td>26/26 backend tests, 89.74% line coverage, typecheck/lint/format pass, isolated test database, Playwright E2E suite and CI pipeline.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="end">
+        <h3>Final position</h3>
+        <p>SafeSignal is complete as a demonstration of secure, role-based emergency coordination: a working end-to-end workflow, a clear access model, a verifiable audit trail and a tested full-stack implementation. It is ready to be demonstrated, evaluated and extended — not to be mistaken for a live emergency service.</p>
+      </div>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>13 · Conclusion</span></div>
+    </section>
+
+    <!-- ================= APPENDIX ================= -->
+    <section class="chapter" id="appendix">
+      <div class="chapter-rule"></div>
+      <h2>Appendix · Setup &amp; Access Reference</h2>
+
+      <h3>A.1 Local demo accounts</h3>
+      <table>
+        <thead><tr><th>Department</th><th>Email</th><th>Password</th><th>Notes</th></tr></thead>
+        <tbody>
+        
+        <tr><td>Citizen</td><td><code>citizen@safesignal.local</code></td><td><code>Password123!</code></td><td>Self-registration is also enabled.</td></tr>
+        <tr><td>Dispatcher</td><td><code>dispatcher@safesignal.local</code></td><td><code>Password123!</code></td><td>Operational queue and assignments.</td></tr>
+        <tr><td>Responder</td><td><code>responder@safesignal.local</code></td><td><code>Password123!</code></td><td>Primary responder; ambulance profile.</td></tr>
+        <tr><td>Responder</td><td><code>backup@safesignal.local</code></td><td><code>Password123!</code></td><td>Second responder for reassignment flows.</td></tr>
+        <tr><td>Administrator</td><td><code>admin@safesignal.local</code></td><td><code>Password123!</code></td><td>Accounts, categories and audit.</td></tr>
+      </tbody>
+      </table>
+
+      <h3>A.2 Common commands</h3>
+      <div class="code"><span class="muted"># backend checks</span>
+cd backend
+npm run typecheck
+npm run lint
+npm run format:check
+npm test
+npm run test:coverage
+
+<span class="muted"># frontend checks</span>
+cd ../frontend
+npm run typecheck
+npm run lint
+npm run format:check
+npx playwright test
+
+<span class="muted"># database and local stack</span>
+cd ../backend
+npx prisma migrate deploy
+npm run db:seed:demo
+cd ..
+docker compose up -d</div>
+
+      <h3>A.3 Key access endpoints</h3>
+      <table>
+        <thead><tr><th>Area</th><th>Endpoints</th><th>Allowed department</th></tr></thead>
+        <tbody>
+        
+        <tr><td>Auth</td><td><code>POST /auth/register</code>, <code>POST /auth/login</code></td><td>Public</td></tr>
+        <tr><td>Own account</td><td><code>GET/PATCH /auth/me</code>, <code>POST /auth/logout</code></td><td>Any authenticated</td></tr>
+        <tr><td>Incident report</td><td><code>POST /incidents</code></td><td>Citizen</td></tr>
+        <tr><td>Incident read</td><td><code>GET /incidents</code>, <code>/:id</code>, <code>/:id/history</code>, <code>/stats</code></td><td>All, scoped</td></tr>
+        <tr><td>Incident operations</td><td><code>review</code>, <code>verify</code>, <code>reject</code>, <code>priority</code>, <code>close</code></td><td>Dispatcher</td></tr>
+        <tr><td>Citizen cancel</td><td><code>POST /incidents/:id/cancel</code></td><td>Citizen owner, eligible state</td></tr>
+        <tr><td>Assignments</td><td><code>POST /assignments</code>, <code>/:id/reassign</code></td><td>Dispatcher</td></tr>
+        <tr><td>Response</td><td><code>accept</code>, <code>reject</code>, <code>en-route</code>, <code>arrived</code>, <code>in-progress</code>, <code>resolved</code></td><td>Responder</td></tr>
+        <tr><td>Administration</td><td><code>/admin/users</code>, <code>/admin/audit-logs</code></td><td>Administrator</td></tr>
+      </tbody>
+      </table>
+
+      <h3>A.4 Source documents</h3>
+      <table>
+        <thead><tr><th style="width:38%">Document</th><th>Purpose</th></tr></thead>
+        <tbody>
+        
+        <tr><td><code>docs/01-project-overview/departments-and-access-setup.md</code></td><td>Full department, account, permission and verification guide.</td></tr>
+        <tr><td><code>docs/01-project-overview/user-roles-and-core-features.md</code></td><td>Role responsibilities, feature definitions and business rules.</td></tr>
+        <tr><td><code>docs/05-database-design/database-schema-and-relationships.md</code></td><td>Schema, relationships, constraints and delete policy.</td></tr>
+        <tr><td><code>docs/06-api-documentation/</code></td><td>API standards and endpoint documentation.</td></tr>
+        <tr><td><code>docs/07-security/</code></td><td>Authentication, authorization, privacy and security controls.</td></tr>
+        <tr><td><code>docs/08-testing/</code></td><td>Testing strategy, test cases, latency evidence and release checklist.</td></tr>
+      </tbody>
+      </table>
+
+      <h3>A.5 Verification sign-off</h3>
+      <table>
+        <thead><tr><th style="width:38%">Evidence</th><th>Recorded status</th></tr></thead>
+        <tbody>
+          <tr><td>Backend integration suite</td><td>26 passed, 0 failed, 0 skipped.</td></tr>
+          <tr><td>Coverage</td><td>89.74% lines · 71.43% branches · 88.84% functions.</td></tr>
+          <tr><td>Static checks</td><td>TypeScript, ESLint and Prettier pass in both applications.</td></tr>
+          <tr><td>Schema</td><td>Prisma schema validates; migrations apply to the isolated test database.</td></tr>
+          <tr><td>E2E and CI</td><td>16-check Playwright suite wired into the full-stack CI pipeline; not re-executed for this report.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="end" style="margin-top:16px">
+        <h3>End of report</h3>
+        <p>SafeSignal Final Project Report · Version 1.0 · 14 November 2026. The implementation, test evidence and operational setup are recorded in the repository. SafeSignal remains a controlled demonstration and academic prototype, not a live emergency service.</p>
+      </div>
+
+      <div class="chapter-footer"><span>SafeSignal — Final Project Report</span><span>Appendix · Setup &amp; Access Reference</span></div>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>

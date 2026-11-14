@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-label="SafeSignal four role-based departments and their access">
+  <defs>
+    <linearGradient id="citizen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="dispatcher" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+    <linearGradient id="responder" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#c2410c"/>
+    </linearGradient>
+    <linearGradient id="admin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a855f7"/>
+      <stop offset="1" stop-color="#7e22ce"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.08"/>
+    </filter>
+    <style>
+      .font { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+      .card-name { font-size: 25px; font-weight: 800; fill: #ffffff; }
+      .card-role { font-size: 12px; font-weight: 700; letter-spacing: 1.6px; fill: rgba(255,255,255,0.85); }
+      .card-purpose { font-size: 14.5px; fill: #475569; }
+      .item { font-size: 15px; fill: #334155; }
+      .no { font-size: 14px; fill: #b91c1c; }
+      .account { font-size: 12.5px; font-weight: 600; fill: #475569; }
+      .footer { font-size: 15px; font-weight: 600; fill: #e2e8f0; }
+      .kicker { font-size: 13px; font-weight: 700; letter-spacing: 2px; fill: #64748b; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <rect x="28" y="24" width="1544" height="852" rx="28" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+
+  <g class="font">
+    <text x="70" y="82" font-size="38" font-weight="800" fill="#0f172a" letter-spacing="-1">Four Role-Based Departments</text>
+    <text x="70" y="116" font-size="18" fill="#475569">Each account belongs to exactly one department through Role.name; the backend enforces every boundary.</text>
+
+    <rect x="1255" y="56" width="270" height="38" rx="19" fill="#f5f3ff" stroke="#ddd6fe"/>
+    <text x="1390" y="81" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="1.4" fill="#6d28d9">RBAC + RESOURCE SCOPE</text>
+
+    <!-- Citizen -->
+    <g filter="url(#sh)">
+      <rect x="50" y="150" width="350" height="640" rx="20" fill="#ffffff" stroke="#d1fae5" stroke-width="1.5"/>
+    </g>
+    <path d="M50 170a20 20 0 0120-20h310a20 20 0 0120 20v110H50z" fill="url(#citizen)"/>
+    <text x="78" y="204" class="card-role">DEPARTMENT 01 · CITIZEN</text>
+    <text x="78" y="240" class="card-name">Citizen</text>
+    <text x="78" y="264" class="card-role" style="letter-spacing:0;font-weight:500;font-size:14px">Report and track emergencies</text>
+    <text x="78" y="307" class="card-purpose">Self-registers into this role.</text>
+
+    <text x="78" y="347" class="kicker">CAN ACCESS</text>
+    <text x="78" y="380" class="item">✓  Submit SOS reports</text>
+    <text x="78" y="410" class="item">✓  Own incidents only</text>
+    <text x="78" y="440" class="item">✓  Cancel before dispatch</text>
+    <text x="78" y="470" class="item">✓  Attach own evidence</text>
+    <text x="78" y="500" class="item">✓  Live map + reports</text>
+    <text x="78" y="530" class="item">✓  Notifications + profile</text>
+
+    <text x="78" y="575" class="kicker">CANNOT</text>
+    <text x="78" y="606" class="no">×  Verify or prioritise</text>
+    <text x="78" y="635" class="no">×  Assign or close</text>
+    <text x="78" y="664" class="no">×  View other citizens' data</text>
+
+    <rect x="78" y="704" width="294" height="56" rx="10" fill="#f0fdf4"/>
+    <text x="92" y="727" class="account">citizen@safesignal.local</text>
+    <text x="92" y="747" class="account">Password123! · local demo only</text>
+
+    <!-- Dispatcher -->
+    <g filter="url(#sh)">
+      <rect x="430" y="150" width="350" height="640" rx="20" fill="#ffffff" stroke="#dbeafe" stroke-width="1.5"/>
+    </g>
+    <path d="M430 170a20 20 0 0120-20h310a20 20 0 0120 20v110H430z" fill="url(#dispatcher)"/>
+    <text x="458" y="204" class="card-role">DEPARTMENT 02 · DISPATCHER</text>
+    <text x="458" y="240" class="card-name">Dispatch</text>
+    <text x="458" y="264" class="card-role" style="letter-spacing:0;font-weight:500;font-size:14px">Triage and coordinate response</text>
+    <text x="458" y="307" class="card-purpose">Provisioned by an administrator.</text>
+
+    <text x="458" y="347" class="kicker">CAN ACCESS</text>
+    <text x="458" y="380" class="item">✓  Full incident queue</text>
+    <text x="458" y="410" class="item">✓  Review, verify, reject</text>
+    <text x="458" y="440" class="item">✓  Set priority</text>
+    <text x="458" y="470" class="item">✓  Assign and reassign</text>
+    <text x="458" y="500" class="item">✓  Available responders</text>
+    <text x="458" y="530" class="item">✓  Close resolved incidents</text>
+
+    <text x="458" y="575" class="kicker">CANNOT</text>
+    <text x="458" y="606" class="no">×  Manage users or roles</text>
+    <text x="458" y="635" class="no">×  Edit categories or audit</text>
+    <text x="458" y="664" class="no">×  Act as a responder</text>
+
+    <rect x="458" y="704" width="294" height="56" rx="10" fill="#eff6ff"/>
+    <text x="472" y="727" class="account">dispatcher@safesignal.local</text>
+    <text x="472" y="747" class="account">Password123! · local demo only</text>
+
+    <!-- Responder -->
+    <g filter="url(#sh)">
+      <rect x="810" y="150" width="350" height="640" rx="20" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+    </g>
+    <path d="M810 170a20 20 0 0120-20h310a20 20 0 0120 20v110H810z" fill="url(#responder)"/>
+    <text x="838" y="204" class="card-role">DEPARTMENT 03 · RESPONDER</text>
+    <text x="838" y="240" class="card-name">Response</text>
+    <text x="838" y="264" class="card-role" style="letter-spacing:0;font-weight:500;font-size:14px">Act on assignments and report progress</text>
+    <text x="838" y="307" class="card-purpose">Provisioned by an administrator.</text>
+
+    <text x="838" y="347" class="kicker">CAN ACCESS</text>
+    <text x="838" y="380" class="item">✓  Assigned incidents only</text>
+    <text x="838" y="410" class="item">✓  Accept or reject</text>
+    <text x="838" y="440" class="item">✓  En route → arrived</text>
+    <text x="838" y="470" class="item">✓  In progress → resolved</text>
+    <text x="838" y="500" class="item">✓  Own availability/profile</text>
+    <text x="838" y="530" class="item">✓  Live map + own reports</text>
+
+    <text x="838" y="575" class="kicker">CANNOT</text>
+    <text x="838" y="606" class="no">×  See unassigned incidents</text>
+    <text x="838" y="635" class="no">×  Assign work or set priority</text>
+    <text x="838" y="664" class="no">×  Verify or close incidents</text>
+
+    <rect x="838" y="704" width="294" height="56" rx="10" fill="#fffbeb"/>
+    <text x="852" y="727" class="account">responder@safesignal.local</text>
+    <text x="852" y="747" class="account">Password123! · local demo only</text>
+
+    <!-- Admin -->
+    <g filter="url(#sh)">
+      <rect x="1190" y="150" width="350" height="640" rx="20" fill="#ffffff" stroke="#e9d5ff" stroke-width="1.5"/>
+    </g>
+    <path d="M1190 170a20 20 0 0120-20h310a20 20 0 0120 20v110h-350z" fill="url(#admin)"/>
+    <text x="1218" y="204" class="card-role">DEPARTMENT 04 · ADMINISTRATOR</text>
+    <text x="1218" y="240" class="card-name">Administration</text>
+    <text x="1218" y="264" class="card-role" style="letter-spacing:0;font-weight:500;font-size:14px">Govern accounts, data and audit</text>
+    <text x="1218" y="307" class="card-purpose">Created by the production seeder.</text>
+
+    <text x="1218" y="347" class="kicker">CAN ACCESS</text>
+    <text x="1218" y="380" class="item">✓  Create and list users</text>
+    <text x="1218" y="410" class="item">✓  Change roles</text>
+    <text x="1218" y="440" class="item">✓  Suspend / reactivate</text>
+    <text x="1218" y="470" class="item">✓  Categories</text>
+    <text x="1218" y="500" class="item">✓  Audit logs</text>
+    <text x="1218" y="530" class="item">✓  All incidents (read) + stats</text>
+
+    <text x="1218" y="575" class="kicker">GUARDRAILS</text>
+    <text x="1218" y="606" class="no">×  Own role/status change</text>
+    <text x="1218" y="635" class="no">×  Dispatch actions</text>
+    <text x="1218" y="664" class="no">×  Password/hash access</text>
+
+    <rect x="1218" y="704" width="294" height="56" rx="10" fill="#faf5ff"/>
+    <text x="1232" y="727" class="account">admin@safesignal.local</text>
+    <text x="1232" y="747" class="account">Password123! · local demo only</text>
+
+    <!-- Footer chain -->
+    <rect x="50" y="812" width="1490" height="44" rx="14" fill="#0f172a"/>
+    <text x="795" y="840" text-anchor="middle" class="footer" fill="#e2e8f0">Session → ACTIVE account → canonical role → resource scope → validated lifecycle → audit record</text>
+  </g>
+</svg>
