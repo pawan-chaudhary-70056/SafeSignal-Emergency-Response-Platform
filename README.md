@@ -557,57 +557,7 @@ Refer to `docs/05-database-design/` for detailed database documentation.
 
 ---
 
-## 14. Project Structure
-
-The repository separates frontend and backend applications, project documentation, deployment configuration, scripts, and reports.
-
-```text
-SafeSignal/
-│
-├── README.md
-│
-├── backend/
-│   ├── src/
-│   ├── prisma/
-│   ├── package.json
-│   └── ...
-│
-├── frontend/
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   └── ...
-│
-├── docs/
-│   ├── 01-project-overview/
-│   ├── 02-software-requirements/
-│   ├── 03-application-workflows/
-│   ├── 04-system-architecture/
-│   ├── 05-database-design/
-│   ├── 06-api-documentation/
-│   ├── 07-security/
-│   ├── 08-testing/
-│   ├── 09-deployment/
-│   └── README.md
-│
-├── reports/
-│   └── final/
-│
-├── scripts/
-│
-├── .github/
-│   └── workflows/
-│
-├── docker-compose.yml
-│
-└── ...
-```
-
-This is a high-level project structure. Exact implementation directories and files may evolve during development.
-
----
-
-## 15. Getting Started
+## 14. Getting Started
 
 ### Prerequisites
 
@@ -655,7 +605,7 @@ cd ..
 
 ---
 
-## 16. Environment Configuration
+## 15. Environment Configuration
 
 Configure the environment variables required by the backend and frontend.
 
@@ -694,7 +644,7 @@ These values are examples. Actual variable names must match the application's en
 
 ---
 
-## 17. Database Setup
+## 16. Database Setup
 
 SafeSignal uses PostgreSQL with Prisma ORM.
 
@@ -738,7 +688,7 @@ cd ..
 
 ---
 
-## 18. Running the Application
+## 17. Running the Application
 
 ### Start the Backend
 
@@ -770,7 +720,7 @@ Actual ports and scripts must match the application configuration.
 
 ---
 
-## 19. Docker Setup
+## 18. Docker Setup
 
 SafeSignal supports a Docker Compose-based development environment.
 
@@ -804,7 +754,7 @@ For detailed deployment instructions, refer to `docs/09-deployment/`.
 
 ---
 
-## 20. Testing and Quality Assurance
+## 19. Testing and Quality Assurance
 
 Testing is important for maintaining application reliability, security, and data consistency.
 
@@ -924,31 +874,7 @@ npm run lint:fix
 
 ---
 
-## 21. Documentation
-
-SafeSignal maintains detailed project documentation under the `docs/` directory.
-
-| Directory | Description |
-|---|---|
-| `01-project-overview/` | Project purpose, scope, objectives, and users |
-| `02-software-requirements/` | Functional and non-functional requirements |
-| `03-application-workflows/` | Authentication, reporting, dispatch, and response workflows |
-| `04-system-architecture/` | Architecture, modules, data flow, and deployment design |
-| `05-database-design/` | Database structure, relationships, and constraints |
-| `06-api-documentation/` | API standards, endpoints, and real-time events |
-| `07-security/` | Security architecture, authorization, and privacy |
-| `08-testing/` | Testing strategy, test cases, performance, and release checks |
-| `09-deployment/` | Environment setup, Docker, deployment, and recovery |
-
-Start with:
-
-`docs/README.md`
-
-The documentation is intended to provide a more detailed technical reference than this repository overview.
-
----
-
-## 22. Development Roadmap
+## 20. Development Roadmap
 
 The following roadmap describes the development direction of SafeSignal. Roadmap items should not be interpreted as completed features unless they have been implemented and verified.
 
@@ -997,7 +923,7 @@ The following roadmap describes the development direction of SafeSignal. Roadmap
 
 ---
 
-## 23. Project Scope and Limitations
+## 21. Project Scope and Limitations
 
 SafeSignal focuses on emergency reporting and response coordination workflows.
 
@@ -1030,7 +956,7 @@ Real-world operational use requires appropriate legal, security, operational, in
 
 ---
 
-## 24. Contribution Guidelines
+## 22. Contribution Guidelines
 
 Contributions are welcome when they improve the reliability, usability, security, functionality, or maintainability of SafeSignal.
 
@@ -1057,7 +983,7 @@ Contributions are welcome when they improve the reliability, usability, security
 
 ---
 
-## 25. License
+## 23. License
 
 No formal license has been specified in the current project documentation.
 
@@ -1067,7 +993,7 @@ Until a license is added, do not assume that the source code is available for un
 
 ---
 
-## 26. Acknowledgements
+## 24. Acknowledgements
 
 SafeSignal is developed using open-source technologies and tools, including:
 
