@@ -662,7 +662,7 @@ npm run test:coverage
 
 The command prints a per-file coverage table after the suite finishes.
 
-API response-time validation (NFR-016): `npm run perf:latency` measures p50/p95 latency of the common read endpoints against a running API and exits non-zero if any endpoint misses the 500 ms p95 target. Results and method are recorded in `docs/08-testing/performance-and-latency-validation.md`.
+API response-time validation (NFR-016): `npm run perf:latency` measures p50/p95 latency of the common read endpoints against a running API and exits non-zero if any endpoint misses the 500 ms p95 target. 
 
 ### Playwright E2E Suite
 
@@ -728,29 +728,8 @@ docker compose down
 
 **Warning:** Avoid `docker compose down -v` unless volume deletion is explicitly intended and all required data has been safely backed up.
 
-Refer to `docs/09-deployment/docker-and-database-setup.md` for detailed instructions.
-
 ---
 
-## Documentation
-
-The `docs/` directory contains the project's detailed technical and implementation documentation.
-
-| Directory | Description |
-|---|---|
-| `01-project-overview/` | Project purpose, scope, objectives, and users |
-| `02-software-requirements/` | Functional and non-functional requirements |
-| `03-application-workflows/` | Authentication, reporting, dispatch, and response workflows |
-| `04-system-architecture/` | Architecture, modules, data flow, and deployment design |
-| `05-database-design/` | Database structure, relationships, and constraints |
-| `06-api-documentation/` | API standards, endpoints, and real-time events |
-| `07-security/` | Security architecture, authorization, and privacy |
-| `08-testing/` | Testing strategy, test cases, and release checks |
-| `09-deployment/` | Environment setup, Docker, deployment, and recovery |
-
-Start with [`docs/README.md`](docs/README.md) for the documentation index.
-
----
 
 ## Development Roadmap
 
