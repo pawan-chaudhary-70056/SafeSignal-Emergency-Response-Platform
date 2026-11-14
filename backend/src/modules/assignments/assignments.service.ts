@@ -413,7 +413,10 @@ export async function updateResponseProgress(
   }
 
   if (target === "RESOLVED" && !resolutionNotes?.trim()) {
-    throw badRequest("RESOLUTION_NOTES_REQUIRED", "Resolution notes are required to resolve an incident");
+    throw badRequest(
+      "RESOLUTION_NOTES_REQUIRED",
+      "Resolution notes are required to resolve an incident",
+    );
   }
 
   assertIncidentTransition(assignment.incident.status, target);

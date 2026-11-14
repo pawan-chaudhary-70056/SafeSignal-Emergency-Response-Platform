@@ -9,6 +9,7 @@ import { prisma } from "../src/lib/prisma.js";
 import { closeRedis } from "../src/lib/redis.js";
 import { resetRateLimits } from "../src/middleware/rate-limit.js";
 import { closeRealtime, initRealtime } from "../src/realtime/index.js";
+import { enqueueJob, processDueJobs, runRetentionSweep } from "../src/worker/worker.js";
 
 const PASSWORD = "Password123!";
 
@@ -38,7 +39,7 @@ async function assertIsolatedTestDatabase() {
 
 async function resetDatabase() {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Evidence", "Notification", "AuditLog", "Assignment", "IncidentStatusHistory", "Incident", "ResponderProfile", "Session", "User", "EmergencyCategory", "Role" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "Evidence", "Notification", "AuditLog", "Assignment", "IncidentStatusHistory", "Incident", "ResponderProfile", "Session", "User", "EmergencyCategory", "Role", "BackgroundJob" RESTART IDENTITY CASCADE',
   );
   await prisma.role.createMany({
     data: [
@@ -77,7 +78,9 @@ async function login(email: string) {
 }
 
 async function loginCookie(email: string): Promise<string> {
-  const response = await request(app).post("/api/v1/auth/login").send({ email, password: PASSWORD });
+  const response = await request(app)
+    .post("/api/v1/auth/login")
+    .send({ email, password: PASSWORD });
   assert.equal(response.status, 200, `login failed for ${email}: ${response.text}`);
 
   const setCookie = response.headers["set-cookie"];
@@ -170,14 +173,8 @@ describe("SafeSignal emergency response flow", () => {
 
     const dispatcher = await login("dispatcher@test.local");
 
-    assert.equal(
-      (await dispatcher.post(`/api/v1/incidents/${incident.id}/review`)).status,
-      200,
-    );
-    assert.equal(
-      (await dispatcher.post(`/api/v1/incidents/${incident.id}/verify`)).status,
-      200,
-    );
+    assert.equal((await dispatcher.post(`/api/v1/incidents/${incident.id}/review`)).status, 200);
+    assert.equal((await dispatcher.post(`/api/v1/incidents/${incident.id}/verify`)).status, 200);
 
     const priority = await dispatcher
       .patch(`/api/v1/incidents/${incident.id}/priority`)
@@ -270,6 +267,76 @@ describe("SafeSignal emergency response flow", () => {
     });
     assert.equal(assignRejected.status, 409);
     assert.equal(assignRejected.body.error.code, "INCIDENT_NOT_VERIFIED");
+  });
+
+  it("lets the citizen cancel an incident until a responder is dispatched", async () => {
+    const dispatcherUser = await createUser("DISPATCHER", "cancel-dispatcher@test.local");
+    const responderUser = await createUser("RESPONDER", "cancel-responder@test.local");
+
+    const citizen = request.agent(app);
+    await citizen.post("/api/v1/auth/register").send({
+      fullName: "Cancel Citizen",
+      email: "cancel-citizen@test.local",
+      password: PASSWORD,
+    });
+    await citizen
+      .post("/api/v1/auth/login")
+      .send({ email: "cancel-citizen@test.local", password: PASSWORD });
+
+    const incident = await submitIncident(citizen);
+    const dispatcher = await login("cancel-dispatcher@test.local");
+
+    // Cancel with a reason from SUBMITTED.
+    const cancelled = await citizen
+      .post(`/api/v1/incidents/${incident.id}/cancel`)
+      .send({ reason: "False alarm — the person recovered before help arrived." });
+    assert.equal(cancelled.status, 200, cancelled.text);
+    assert.equal(cancelled.body.incident.status, "CANCELLED");
+
+    const history = await citizen.get(`/api/v1/incidents/${incident.id}/history`);
+    assert.equal(history.status, 200);
+    assert.deepEqual(
+      history.body.history.map((entry: { newStatus: string }) => entry.newStatus),
+      ["SUBMITTED", "CANCELLED"],
+    );
+
+    const audits = await prisma.auditLog.findMany({
+      where: { action: "incident.cancelled", entityId: incident.id },
+    });
+    assert.equal(audits.length, 1);
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        recipientId: dispatcherUser.id,
+        type: "INCIDENT_STATUS_UPDATED",
+        entityId: incident.id,
+      },
+    });
+    assert.equal(notifications.length, 1);
+
+    // A dispatched incident can no longer be cancelled by the citizen.
+    const second = await submitIncident(citizen);
+    await dispatcher.post(`/api/v1/incidents/${second.id}/review`);
+    await dispatcher.post(`/api/v1/incidents/${second.id}/verify`);
+    await dispatcher.post("/api/v1/assignments").send({
+      incidentId: second.id,
+      responderId: responderUser.id,
+    });
+
+    const tooLate = await citizen.post(`/api/v1/incidents/${second.id}/cancel`).send({});
+    assert.equal(tooLate.status, 409);
+    assert.equal(tooLate.body.error.code, "INCIDENT_NOT_CANCELLABLE");
+
+    // A different citizen gets the same 404 as a missing incident: no id probing.
+    await createUser("CITIZEN", "other-citizen@test.local");
+    const stranger = await login("other-citizen@test.local");
+    const forbidden = await stranger.post(`/api/v1/incidents/${incident.id}/cancel`).send({});
+    assert.equal(forbidden.status, 404);
+    assert.equal(forbidden.body.error.code, "NOT_FOUND");
+
+    // Dispatchers cannot use the citizen cancel route.
+    const viaDispatcher = await dispatcher.post(`/api/v1/incidents/${incident.id}/cancel`).send({});
+    assert.equal(viaDispatcher.status, 403);
   });
 
   it("enforces role and ownership rules", async () => {
@@ -380,7 +447,7 @@ describe("SafeSignal emergency response flow", () => {
     const citizenCookie = await loginCookie("realtime@test.local");
 
     const server = createServer(app);
-    initRealtime(server);
+    await initRealtime(server);
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
 
     const address = server.address();
@@ -412,8 +479,12 @@ describe("SafeSignal emergency response flow", () => {
 
       const assignmentCreated = waitForEvent(responderSocket, "assignment.created");
 
-      await request(app).post(`/api/v1/incidents/${incidentId}/review`).set("Cookie", dispatcherCookie);
-      await request(app).post(`/api/v1/incidents/${incidentId}/verify`).set("Cookie", dispatcherCookie);
+      await request(app)
+        .post(`/api/v1/incidents/${incidentId}/review`)
+        .set("Cookie", dispatcherCookie);
+      await request(app)
+        .post(`/api/v1/incidents/${incidentId}/verify`)
+        .set("Cookie", dispatcherCookie);
       const assignmentResponse = await request(app)
         .post("/api/v1/assignments")
         .set("Cookie", dispatcherCookie)
@@ -439,7 +510,7 @@ describe("SafeSignal emergency response flow", () => {
     const responderCookie = await loginCookie("responder@test.local");
 
     const server = createServer(app);
-    initRealtime(server);
+    await initRealtime(server);
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
 
     const address = server.address();
@@ -449,10 +520,7 @@ describe("SafeSignal emergency response flow", () => {
     const dispatcherSocket = await connectSocket(url, dispatcherCookie);
 
     try {
-      const availabilityEvent = waitForEvent(
-        dispatcherSocket,
-        "responder.availability_updated",
-      );
+      const availabilityEvent = waitForEvent(dispatcherSocket, "responder.availability_updated");
 
       const response = await request(app)
         .patch("/api/v1/responders/me/availability")
@@ -558,10 +626,7 @@ describe("SafeSignal emergency response flow", () => {
     assert.equal(loginResponse.headers["x-content-type-options"], "nosniff");
     assert.equal(loginResponse.headers["x-frame-options"], "DENY");
     assert.equal(loginResponse.headers["referrer-policy"], "no-referrer");
-    assert.match(
-      String(loginResponse.headers["content-security-policy"]),
-      /default-src 'none'/,
-    );
+    assert.match(String(loginResponse.headers["content-security-policy"]), /default-src 'none'/);
 
     const preflight = await request(app)
       .options("/api/v1/incidents")
@@ -586,9 +651,9 @@ describe("SafeSignal emergency response flow", () => {
     const agent = await login("dispatcher@test.local");
     await agent.post("/api/v1/auth/logout");
 
-    const recorded = (
-      await prisma.auditLog.findMany({ orderBy: { createdAt: "asc" } })
-    ).map((entry) => entry.action);
+    const recorded = (await prisma.auditLog.findMany({ orderBy: { createdAt: "asc" } })).map(
+      (entry) => entry.action,
+    );
 
     assert.ok(recorded.includes("auth.login_failed"));
     assert.ok(recorded.includes("auth.login"));
@@ -678,14 +743,10 @@ describe("SafeSignal emergency response flow", () => {
     const citizenNotificationId = citizenList.body.notifications[0].id as string;
 
     // Another user's notification id must not be readable.
-    const stolen = await dispatcher.patch(
-      `/api/v1/notifications/${citizenNotificationId}/read`,
-    );
+    const stolen = await dispatcher.patch(`/api/v1/notifications/${citizenNotificationId}/read`);
     assert.equal(stolen.status, 404);
 
-    const marked = await citizen.patch(
-      `/api/v1/notifications/${citizenNotificationId}/read`,
-    );
+    const marked = await citizen.patch(`/api/v1/notifications/${citizenNotificationId}/read`);
     assert.equal(marked.status, 200, marked.text);
     assert.equal(marked.body.notification.isRead, true);
 
@@ -832,9 +893,8 @@ describe("SafeSignal emergency response flow", () => {
     assert.equal(citizenStats.body.stats.resolved, 1);
     assert.equal(citizenStats.body.stats.averageResolutionMinutes, 45);
     assert.equal(
-      citizenStats.body.stats.byStatus.find(
-        (row: { status: string }) => row.status === "SUBMITTED",
-      ).count,
+      citizenStats.body.stats.byStatus.find((row: { status: string }) => row.status === "SUBMITTED")
+        .count,
       1,
     );
     assert.equal(citizenStats.body.stats.byPriority.length, 4);
@@ -954,9 +1014,7 @@ describe("SafeSignal emergency response flow", () => {
     assert.equal(secondAuditPage.body.logs.length, 1);
     assert.equal(secondAuditPage.body.logs[0].metadata.accountStatus, "SUSPENDED");
 
-    const roleAudit = await admin.get(
-      "/api/v1/admin/audit-logs?action=admin.user_role_changed",
-    );
+    const roleAudit = await admin.get("/api/v1/admin/audit-logs?action=admin.user_role_changed");
     assert.equal(roleAudit.body.pagination.totalItems, 1);
     assert.equal(roleAudit.body.logs[0].metadata.role, "RESPONDER");
 
@@ -967,7 +1025,7 @@ describe("SafeSignal emergency response flow", () => {
   it("attaches, lists, and downloads incident evidence with scoped access", async () => {
     await createUser("DISPATCHER", "dispatcher@test.local");
     const assignedResponder = await createUser("RESPONDER", "assigned-responder@test.local");
-    const outsider = await createUser("CITIZEN", "outsider@test.local");
+    await createUser("CITIZEN", "outsider@test.local");
 
     await request(app).post("/api/v1/auth/register").send({
       fullName: "Evidence Citizen",
@@ -1025,22 +1083,23 @@ describe("SafeSignal emergency response flow", () => {
     assert.equal(oversized.status, 413, oversized.text);
     assert.equal(oversized.body.error.code, "PAYLOAD_TOO_LARGE");
 
-    // Other citizens, and responders without the assignment, stay locked out.
+    // Other citizens, and responders without the assignment, get the same
+    // 404 as a missing incident: ids cannot be probed through evidence.
     const outsiderAgent = await login("outsider@test.local");
     const outsiderList = await outsiderAgent.get(`/api/v1/incidents/${incident.id}/evidence`);
-    assert.equal(outsiderList.status, 403);
+    assert.equal(outsiderList.status, 404);
     const outsiderUpload = await outsiderAgent
       .post(`/api/v1/incidents/${incident.id}/evidence`)
       .set("Content-Type", "application/octet-stream")
       .set("x-file-name", "sneaky.png")
       .send(png);
-    assert.equal(outsiderUpload.status, 403);
+    assert.equal(outsiderUpload.status, 404);
 
     const unassignedResponder = await createUser("RESPONDER", "unassigned-responder@test.local");
     const responderAgent = await login("unassigned-responder@test.local");
     assert.ok(unassignedResponder, "unassigned responder exists");
     const unassignedList = await responderAgent.get(`/api/v1/incidents/${incident.id}/evidence`);
-    assert.equal(unassignedList.status, 403);
+    assert.equal(unassignedList.status, 404);
 
     // The dispatcher sees, downloads, and can also attach evidence.
     const dispatcher = await login("dispatcher@test.local");
@@ -1053,17 +1112,20 @@ describe("SafeSignal emergency response flow", () => {
       .post(`/api/v1/incidents/${incident.id}/evidence`)
       .set("Content-Type", "application/octet-stream")
       .set("x-file-name", "dispatcher-note.pdf")
-      .send(
-        Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.from("% dispatcher field notes\n")]),
-      );
+      .send(Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.from("% dispatcher field notes\n")]));
     assert.equal(dispatcherUpload.status, 201, dispatcherUpload.text);
     assert.equal(dispatcherUpload.body.evidence.mimeType, "application/pdf");
 
-    const pdfDownload = await dispatcher.get(`/api/v1/evidence/${dispatcherUpload.body.evidence.id}`);
+    const pdfDownload = await dispatcher.get(
+      `/api/v1/evidence/${dispatcherUpload.body.evidence.id}`,
+    );
     assert.equal(pdfDownload.status, 200);
     assert.equal(pdfDownload.headers["content-type"], "application/pdf");
     assert.match(String(pdfDownload.headers["content-disposition"]), /attachment/);
-    assert.equal(String(pdfDownload.headers["cache-control"]).replace(/\s/g, ""), "private,no-store");
+    assert.equal(
+      String(pdfDownload.headers["cache-control"]).replace(/\s/g, ""),
+      "private,no-store",
+    );
 
     // Citizen notifies dispatchers; dispatcher upload notifies the citizen.
     const dispatcherNotifications = await dispatcher.get("/api/v1/notifications");
@@ -1083,10 +1145,15 @@ describe("SafeSignal emergency response flow", () => {
     const assignedAgent = await login("assigned-responder@test.local");
     const assignedList = await assignedAgent.get(`/api/v1/incidents/${incident.id}/evidence`);
     assert.equal(assignedList.status, 200);
-    const assignedDownload = await assignedAgent.get(`/api/v1/evidence/${uploaded.body.evidence.id}`);
+    const assignedDownload = await assignedAgent.get(
+      `/api/v1/evidence/${uploaded.body.evidence.id}`,
+    );
     assert.equal(assignedDownload.status, 200);
     assert.equal(assignedDownload.headers["content-type"], "image/png");
-    assert.ok(Buffer.compare(assignedDownload.body, png) === 0, "stored bytes are returned exactly");
+    assert.ok(
+      Buffer.compare(assignedDownload.body, png) === 0,
+      "stored bytes are returned exactly",
+    );
 
     // Only the uploader or a dispatcher can remove evidence.
     const citizenDelete = await citizen.delete(
@@ -1137,12 +1204,7 @@ describe("SafeSignal emergency response flow", () => {
     assert.equal(detail.status, 200, detail.text);
 
     const visible = detail.body.incident.assignments[0] as Record<string, unknown>;
-    assert.deepEqual(Object.keys(visible).sort(), [
-      "assignedAt",
-      "id",
-      "incidentId",
-      "status",
-    ]);
+    assert.deepEqual(Object.keys(visible).sort(), ["assignedAt", "id", "incidentId", "status"]);
     assert.equal(visible.responderId, undefined);
     assert.equal(visible.assignedById, undefined);
     assert.equal(visible.assignmentNote, undefined);
@@ -1196,9 +1258,7 @@ describe("SafeSignal emergency response flow", () => {
     assert.equal(cleared.status, 200, cleared.text);
     assert.equal(cleared.body.user.phone, null);
 
-    const noChanges = await admin
-      .patch(`/api/v1/admin/users/${target.id}/profile`)
-      .send({});
+    const noChanges = await admin.patch(`/api/v1/admin/users/${target.id}/profile`).send({});
     assert.equal(noChanges.status, 400);
     assert.equal(noChanges.body.error.code, "NO_CHANGES");
 
@@ -1270,5 +1330,122 @@ describe("SafeSignal emergency response flow", () => {
     assert.deepEqual(audits[0]?.metadata, { fields: ["fullName", "phone"] });
     // The privilege probe writes only the allowed field to the audit trail.
     assert.deepEqual(audits[1]?.metadata, { fields: ["fullName"] });
+  });
+
+  it("retries notification delivery through the background worker", async () => {
+    const dispatcher = await createUser("DISPATCHER", "worker-dispatcher@test.io");
+    const citizenUser = await createUser("CITIZEN", "worker-citizen@test.io");
+    const incident = await submitIncident(await login("worker-citizen@test.io"));
+
+    // 1. A valid evidence-notification job runs to completion and delivers.
+    await enqueueJob("evidence.notify", {
+      incident: {
+        id: incident.id,
+        referenceNumber: incident.referenceNumber,
+        citizenId: citizenUser.id,
+      },
+      uploader: { id: citizenUser.id, role: "CITIZEN", fullName: "Worker Citizen" },
+    });
+
+    const processed = await processDueJobs();
+    assert.equal(processed.length, 1);
+    assert.equal(processed[0]?.outcome, "done");
+
+    const doneJob = await prisma.backgroundJob.findFirstOrThrow({
+      where: { type: "evidence.notify", status: "DONE" },
+    });
+    assert.equal(doneJob.attempts, 0);
+    assert.equal(doneJob.lastError, null);
+
+    const delivered = await prisma.notification.findMany({
+      where: { recipientId: dispatcher.id, type: "EVIDENCE_ADDED" },
+    });
+    assert.equal(delivered.length, 1);
+
+    // 2. A malformed payload fails once and is rescheduled with backoff.
+    await enqueueJob("evidence.notify", { incident: null, uploader: null });
+    const retried = await processDueJobs();
+    assert.equal(retried.length, 1);
+    assert.equal(retried[0]?.outcome, "retry");
+
+    const retryJob = await prisma.backgroundJob.findFirstOrThrow({
+      where: { type: "evidence.notify", status: "PENDING" },
+    });
+    assert.equal(retryJob.attempts, 1);
+    assert.ok(retryJob.lastError && retryJob.lastError.length > 0);
+    assert.ok(retryJob.runAfter.getTime() > Date.now());
+
+    // The rescheduled job is not due yet, so a later tick must skip it.
+    assert.equal((await processDueJobs()).length, 0);
+
+    // 3. When attempts are exhausted the job is marked FAILED with its error.
+    await prisma.backgroundJob.create({
+      data: {
+        type: "evidence.notify",
+        payload: { incident: null, uploader: null },
+        maxAttempts: 1,
+      },
+    });
+    const exhausted = await processDueJobs();
+    assert.equal(exhausted.length, 1);
+    assert.equal(exhausted[0]?.outcome, "failed");
+
+    const failedJob = await prisma.backgroundJob.findFirstOrThrow({
+      where: { type: "evidence.notify", status: "FAILED" },
+    });
+    assert.equal(failedJob.attempts, 1);
+    assert.ok(failedJob.lastError && failedJob.lastError.length > 0);
+  });
+
+  it("sweeps only expired ephemeral data during the retention run", async () => {
+    const citizenUser = await createUser("CITIZEN", "retention-citizen@test.local");
+    const incident = await submitIncident(await login("retention-citizen@test.local"));
+
+    const recentNotification = await prisma.notification.findFirstOrThrow({
+      where: { recipientId: citizenUser.id },
+    });
+    await prisma.notification.create({
+      data: {
+        recipientId: citizenUser.id,
+        type: "INCIDENT_STATUS_UPDATED",
+        title: "Stale alert",
+        message: "Created long before the retention window.",
+        entityType: "INCIDENT",
+        entityId: incident.id,
+        createdAt: new Date(Date.now() - 100 * 86_400_000),
+      },
+    });
+
+    const expiredSession = await prisma.session.create({
+      data: {
+        userId: citizenUser.id,
+        tokenHash: "retention-expired-session-hash",
+        expiresAt: new Date(Date.now() - 40 * 86_400_000),
+      },
+    });
+
+    const result = await runRetentionSweep();
+    assert.equal(result.notificationsDeleted, 1);
+    assert.equal(result.sessionsDeleted, 1);
+
+    // The alert copy is gone, but the record it referred to remains.
+    const remainingNotifications = await prisma.notification.findMany();
+    assert.deepEqual(
+      remainingNotifications.map((row) => row.id),
+      [recentNotification.id],
+    );
+
+    const survivingSessions = await prisma.session.findMany();
+    assert.ok(
+      !survivingSessions.some((row) => row.id === expiredSession.id),
+      "the expired session must be removed",
+    );
+    assert.ok(survivingSessions.length >= 1, "still-valid sessions must survive the sweep");
+
+    const incidentStillThere = await prisma.incident.findUnique({ where: { id: incident.id } });
+    assert.ok(incidentStillThere, "retention sweep must never delete incidents");
+
+    const audits = await prisma.auditLog.findMany({ where: { entityId: incident.id } });
+    assert.ok(audits.length > 0, "retention sweep must never delete audit history");
   });
 });

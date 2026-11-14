@@ -1,5 +1,7 @@
+import { logger } from "../lib/logger.js";
 import { prisma } from "../lib/prisma.js";
 import { notifyParticipants } from "../modules/notifications/notifications.service.js";
+import { enqueueJob } from "../worker/worker.js";
 import { emitToRole, emitToUser, type RealtimeEvent } from "./index.js";
 
 type IncidentRealtimeEvent = Exclude<
@@ -53,6 +55,15 @@ export async function publishIncidentEvent(input: PublishInput): Promise<void> {
 
     await notifyParticipants({ incident, event: input.event });
   } catch (error) {
-    console.error("Realtime event publish failed", error);
+    // NFR-054: queue the publish for the background worker so a failed
+    // realtime/notification pass is retried instead of dropped.
+    await enqueueJob("incident.notify", {
+      event: input.event,
+      incidentId: input.incidentId,
+    });
+    logger.error("Realtime event publish failed; queued for retry", error, {
+      incidentId: input.incidentId,
+      event: input.event,
+    });
   }
 }

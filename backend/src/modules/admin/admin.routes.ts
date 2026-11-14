@@ -111,7 +111,11 @@ adminRouter.post(
       res.status(201).json({ user });
     } catch (error) {
       // The pre-check handles normal use; the unique index wins any race.
-      if (typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002") {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        (error as { code?: string }).code === "P2002"
+      ) {
         throw conflict("EMAIL_TAKEN", "An account with this email already exists");
       }
       throw error;

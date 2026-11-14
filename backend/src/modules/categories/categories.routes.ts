@@ -24,8 +24,7 @@ categoriesRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const actor = actorFrom(req);
-    const includeInactive =
-      actor.role === "ADMIN" && req.query.includeInactive === "true";
+    const includeInactive = actor.role === "ADMIN" && req.query.includeInactive === "true";
 
     const categories = await prisma.emergencyCategory.findMany({
       where: includeInactive ? {} : { isActive: true },

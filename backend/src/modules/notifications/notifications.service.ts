@@ -6,6 +6,8 @@ type IncidentEvent = Exclude<
   "notification.created" | "responder.availability_updated" | "incident.evidence_updated"
 >;
 
+export type { IncidentEvent };
+
 export type NotificationType =
   | "INCIDENT_SUBMITTED"
   | "INCIDENT_STATUS_UPDATED"
@@ -32,10 +34,7 @@ interface NotificationTemplate {
   message: string;
 }
 
-const templates: Record<
-  IncidentEvent,
-  (incident: NotificationIncident) => NotificationTemplate
-> = {
+const templates: Record<IncidentEvent, (incident: NotificationIncident) => NotificationTemplate> = {
   "incident.created": (incident) => ({
     type: "INCIDENT_SUBMITTED",
     title: "New emergency report",
@@ -135,9 +134,7 @@ export async function notifyEvidenceAdded(input: {
   uploader: { id: string; role: string; fullName: string };
 }): Promise<void> {
   const recipientIds =
-    input.uploader.role === "CITIZEN"
-      ? await dispatcherIds()
-      : [input.incident.citizenId];
+    input.uploader.role === "CITIZEN" ? await dispatcherIds() : [input.incident.citizenId];
 
   if (recipientIds.length === 0) {
     return;

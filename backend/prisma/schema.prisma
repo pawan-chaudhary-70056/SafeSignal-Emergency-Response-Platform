@@ -53,6 +53,15 @@ enum ResponderAvailability {
   UNAVAILABLE
 }
 
+/// Lifecycle of a durable background job. PENDING jobs become PROCESSING when
+/// claimed, then DONE on success or FAILED once retries are exhausted.
+enum BackgroundJobStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
 model Role {
   id          String   @id @default(uuid()) @db.Uuid
   name        String   @unique @db.VarChar(50)
@@ -73,14 +82,14 @@ model User {
   createdAt     DateTime      @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime      @updatedAt @db.Timestamptz(6)
 
-  role                Role                   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  role                Role                    @relation(fields: [roleId], references: [id], onDelete: Restrict)
   sessions            Session[]
-  incidents           Incident[]             @relation("CitizenIncidents")
+  incidents           Incident[]              @relation("CitizenIncidents")
   responderProfile    ResponderProfile?
   statusChanges       IncidentStatusHistory[] @relation("StatusChangedBy")
-  receivedAssignments Assignment[]           @relation("AssignedResponder")
-  createdAssignments  Assignment[]           @relation("AssignedBy")
-  uploadedEvidence    Evidence[]             @relation("EvidenceUploadedBy")
+  receivedAssignments Assignment[]            @relation("AssignedResponder")
+  createdAssignments  Assignment[]            @relation("AssignedBy")
+  uploadedEvidence    Evidence[]              @relation("EvidenceUploadedBy")
   auditLogs           AuditLog[]
   notifications       Notification[]
 
@@ -139,10 +148,10 @@ model Incident {
   assignments   Assignment[]
   evidence      Evidence[]
 
+  @@unique([citizenId, idempotencyKey])
   @@index([citizenId, createdAt])
   @@index([status, priority, createdAt])
   @@index([categoryId])
-  @@unique([citizenId, idempotencyKey])
 }
 
 model IncidentStatusHistory {
@@ -162,13 +171,13 @@ model IncidentStatusHistory {
 }
 
 model ResponderProfile {
-  id                 String               @id @default(uuid()) @db.Uuid
-  userId             String               @unique @db.Uuid
-  responderType      String               @db.VarChar(80)
+  id                 String                @id @default(uuid()) @db.Uuid
+  userId             String                @unique @db.Uuid
+  responderType      String                @db.VarChar(80)
   availabilityStatus ResponderAvailability @default(AVAILABLE)
   operationalNotes   String?
-  createdAt          DateTime             @default(now()) @db.Timestamptz(6)
-  updatedAt          DateTime             @updatedAt @db.Timestamptz(6)
+  createdAt          DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime              @updatedAt @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
@@ -199,20 +208,38 @@ model Assignment {
 }
 
 model Evidence {
-  id          String   @id @default(uuid()) @db.Uuid
-  incidentId  String   @db.Uuid
-  uploadedById String  @db.Uuid
-  fileName    String   @db.VarChar(255)
-  mimeType    String   @db.VarChar(100)
-  sizeBytes   Int
-  content     Bytes
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  id           String   @id @default(uuid()) @db.Uuid
+  incidentId   String   @db.Uuid
+  uploadedById String   @db.Uuid
+  fileName     String   @db.VarChar(255)
+  mimeType     String   @db.VarChar(100)
+  sizeBytes    Int
+  content      Bytes
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
 
   incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Restrict)
   uploadedBy User     @relation("EvidenceUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
 
   @@index([incidentId, createdAt])
   @@index([uploadedById])
+}
+
+/// NFR-054: durable background jobs. Work that must not block a user request
+/// (or that failed inline and needs a retry) is enqueued here and processed by
+/// the worker loop with capped exponential-backoff retries.
+model BackgroundJob {
+  id          String              @id @default(uuid()) @db.Uuid
+  type        String              @db.VarChar(50)
+  payload     Json
+  status      BackgroundJobStatus @default(PENDING)
+  attempts    Int                 @default(0)
+  maxAttempts Int                 @default(5)
+  lastError   String?
+  runAfter    DateTime            @default(now()) @db.Timestamptz(6)
+  createdAt   DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime            @updatedAt @db.Timestamptz(6)
+
+  @@index([status, runAfter])
 }
 
 model AuditLog {

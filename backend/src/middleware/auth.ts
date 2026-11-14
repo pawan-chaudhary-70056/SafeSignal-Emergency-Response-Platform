@@ -4,7 +4,11 @@ import { prisma } from "../lib/prisma.js";
 import { hashSessionToken, parseCookies, SESSION_COOKIE } from "../lib/session.js";
 import { identifyRole, type RoleCode } from "../modules/roles/index.js";
 
-export async function authenticate(req: Request, _res: Response, next: NextFunction): Promise<void> {
+export async function authenticate(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
     if (!token) {

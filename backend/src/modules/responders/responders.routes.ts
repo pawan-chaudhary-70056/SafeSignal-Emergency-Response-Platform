@@ -141,7 +141,11 @@ respondersRouter.patch(
     const actor = actorFrom(req);
     const body = profileSchema.parse(req.body ?? {});
 
-    if (body.fullName === undefined && body.phone === undefined && body.responderType === undefined) {
+    if (
+      body.fullName === undefined &&
+      body.phone === undefined &&
+      body.responderType === undefined
+    ) {
       throw badRequest("NO_CHANGES", "No supported fields were provided");
     }
 

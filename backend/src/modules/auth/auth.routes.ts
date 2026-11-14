@@ -101,10 +101,7 @@ function loginRateLimit() {
         ? [{ windowMs, max: 10, key: `login-account:${email.trim().toLowerCase().slice(0, 255)}` }]
         : [];
 
-    multiRateLimit([
-      ...accountBuckets,
-      { windowMs, max: 60, key: "login-ip" },
-    ])(req, res, next);
+    multiRateLimit([...accountBuckets, { windowMs, max: 60, key: "login-ip" }])(req, res, next);
   };
 }
 
@@ -193,9 +190,7 @@ authRouter.get(
 // validated display fields are taken from the request body.
 const profileUpdateSchema = z.object({
   fullName: z.string().trim().min(2).max(120).optional(),
-  phone: z
-    .union([z.string().trim().min(6).max(30), z.null()])
-    .optional(),
+  phone: z.union([z.string().trim().min(6).max(30), z.null()]).optional(),
 });
 
 authRouter.patch(

@@ -1,4 +1,5 @@
 import { createClient, type RedisClientType } from "redis";
+import { logger } from "./logger.js";
 
 let client: RedisClientType | null = null;
 let connecting: Promise<RedisClientType | null> | null = null;
@@ -34,14 +35,14 @@ export async function getRedis(): Promise<RedisClientType | null> {
         });
 
         created.on("error", (error: Error) => {
-          console.error("Redis error:", error.message);
+          logger.warn("Redis client error", error);
         });
 
         await created.connect();
         client = created as RedisClientType;
         return client;
       } catch (error) {
-        console.error("Redis unavailable:", (error as Error).message);
+        logger.warn("Redis unavailable; continuing without cache", error);
         retryAt = Date.now() + retryDelayMs;
         connecting = null;
         return null;

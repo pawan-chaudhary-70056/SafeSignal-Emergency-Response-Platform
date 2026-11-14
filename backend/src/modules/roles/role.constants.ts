@@ -39,7 +39,10 @@ const ROLE_ALIASES: Record<string, RoleCode> = {
 
 /** Trims, uppercases and collapses spaces/hyphens into underscores. */
 export function normalizeRoleName(value: string): string {
-  return value.trim().toUpperCase().replace(/[\s-]+/g, "_");
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
 }
 
 export function isRoleCode(value: unknown): value is RoleCode {

@@ -1,8 +1,10 @@
 import express, { type NextFunction, type Request, type Response } from "express";
+import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import { csrfProtection } from "./lib/csrf.js";
 import { AppError } from "./lib/errors.js";
 import { asyncHandler, errorBody } from "./lib/http.js";
+import { logger } from "./lib/logger.js";
 import { trustProxyValue } from "./lib/network.js";
 import { prisma } from "./lib/prisma.js";
 import { getRedis } from "./lib/redis.js";
@@ -29,36 +31,47 @@ app.use(express.json({ limit: "100kb" }));
 // NFR-030: report application and dependency health. The database is a hard
 // dependency (503 when unreachable); Redis is optional at runtime, so a Redis
 // problem degrades the report without failing the container healthcheck.
-app.get("/api/v1/health", asyncHandler(async (_req, res) => {
-  // Ping both dependencies: a connected client that cannot answer PING is not
-  // healthy. Redis is optional at runtime, so it degrades the report instead of
-  // failing the container healthcheck.
-  const [database, cache] = await Promise.allSettled([
-    prisma.$queryRaw`SELECT 1`,
-    getRedis().then((client) => (client ? client.ping() : null)),
-  ]);
+app.get(
+  "/api/v1/health",
+  asyncHandler(async (_req, res) => {
+    // Ping both dependencies: a connected client that cannot answer PING is not
+    // healthy. Redis is optional at runtime, so it degrades the report instead of
+    // failing the container healthcheck.
+    const [database, cache] = await Promise.allSettled([
+      prisma.$queryRaw`SELECT 1`,
+      getRedis().then((client) => (client ? client.ping() : null)),
+    ]);
 
-  const databaseOk = database.status === "fulfilled";
-  const cacheState =
-    cache.status === "fulfilled" && cache.value === "PONG" ? "connected" : "unavailable";
+    const databaseOk = database.status === "fulfilled";
+    const cacheState =
+      cache.status === "fulfilled" && cache.value === "PONG" ? "connected" : "unavailable";
 
-  if (!databaseOk) {
-    res.status(503).json({
-      status: "error",
-      database: "unavailable",
+    if (!databaseOk) {
+      res.status(503).json({
+        status: "error",
+        database: "unavailable",
+        cache: cacheState,
+      });
+      return;
+    }
+
+    res.json({
+      status: "ok",
+      database: "connected",
       cache: cacheState,
     });
-    return;
-  }
-
-  res.json({
-    status: "ok",
-    database: "connected",
-    cache: cacheState,
-  });
-}));
+  }),
+);
 
 app.use("/api/v1", corsProtection);
+
+// NFR-064: every API request carries a correlation id that structured error
+// logs echo back, so an application error can be traced to one request.
+app.use("/api/v1", (req, res, next) => {
+  const requestId = req.get("x-request-id")?.slice(0, 64) || randomUUID();
+  res.setHeader("x-request-id", requestId);
+  next();
+});
 
 // Cookie-authenticated mutations from a browser must pass the CSRF checks.
 app.use("/api/v1", csrfProtection);
@@ -76,7 +89,7 @@ app.use((_req, res) => {
   res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found" } });
 });
 
-app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
   if (error instanceof AppError) {
     res.status(error.status).json(errorBody(error));
     return;
@@ -118,7 +131,13 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     return;
   }
 
-  console.error(error);
+  // Structured log (NFR-064): failures carry the correlation id without any
+  // request payload, credentials, or raw error response leakage.
+  logger.error("Unhandled API error", error, {
+    requestId: req.get("x-request-id") ?? res.getHeader("x-request-id"),
+    method: req.method,
+    path: req.originalUrl,
+  });
   res.status(500).json({
     error: { code: "INTERNAL_ERROR", message: "Unexpected server error" },
   });

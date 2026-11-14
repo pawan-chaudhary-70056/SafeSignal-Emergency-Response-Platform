@@ -20,5 +20,4 @@ export const forbidden = (message: string) => new AppError(403, "FORBIDDEN", mes
 
 export const notFound = (message = "Resource not found") => new AppError(404, "NOT_FOUND", message);
 
-export const conflict = (code: string, message: string) =>
-  new AppError(409, code, message);
+export const conflict = (code: string, message: string) => new AppError(409, code, message);

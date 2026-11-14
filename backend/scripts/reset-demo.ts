@@ -54,7 +54,9 @@ async function main() {
     }
   }
 
-  console.log("Demo data reset: incidents, assignments, notifications, audit logs and rate limits cleared.");
+  console.log(
+    "Demo data reset: incidents, assignments, notifications, audit logs and rate limits cleared.",
+  );
 }
 
 main()

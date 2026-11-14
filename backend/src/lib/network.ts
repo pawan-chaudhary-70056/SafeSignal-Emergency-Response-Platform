@@ -26,5 +26,3 @@ export function trustProxyValue(): TrustProxySetting {
 
   return raw;
 }
-
-export const isProduction = (): boolean => process.env.NODE_ENV === "production";

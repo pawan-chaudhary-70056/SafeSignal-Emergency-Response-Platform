@@ -17,15 +17,15 @@ type SameSiteValue = "lax" | "strict" | "none";
  * Secure; COOKIE_SECURE and COOKIE_SAME_SITE allow an explicit deployment
  * override (for example SameSite=None behind a cross-site HTTPS frontend).
  */
-export const cookieSecure = (): boolean =>
+const cookieSecure = (): boolean =>
   process.env.COOKIE_SECURE === "true" || process.env.NODE_ENV === "production";
 
-export const cookieSameSite = (): SameSiteValue => {
+const cookieSameSite = (): SameSiteValue => {
   const raw = (process.env.COOKIE_SAME_SITE ?? "lax").trim().toLowerCase();
   return raw === "strict" || raw === "none" ? raw : "lax";
 };
 
-export const cookieDomain = (): string | undefined => {
+const cookieDomain = (): string | undefined => {
   const domain = process.env.COOKIE_DOMAIN?.trim();
   return domain ? domain : undefined;
 };

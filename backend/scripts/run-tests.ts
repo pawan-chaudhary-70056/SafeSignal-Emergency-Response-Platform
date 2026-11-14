@@ -73,9 +73,21 @@ if (migrate.status !== 0) {
   process.exit(migrate.status ?? 1);
 }
 
-const tests = spawnSync(process.execPath, ["--import", "tsx", "--test", "tests/flow.test.ts"], {
-  stdio: "inherit",
-  env: process.env,
-});
+const tests = spawnSync(
+  process.execPath,
+  [
+    "--import",
+    "tsx",
+    // Optional coverage report (npm run test:coverage) using the Node test
+    // runner's built-in instrumentation — no extra dependency needed.
+    ...(process.argv.includes("--coverage") ? ["--experimental-test-coverage"] : []),
+    "--test",
+    "tests/flow.test.ts",
+  ],
+  {
+    stdio: "inherit",
+    env: process.env,
+  },
+);
 
 process.exit(tests.status ?? 1);

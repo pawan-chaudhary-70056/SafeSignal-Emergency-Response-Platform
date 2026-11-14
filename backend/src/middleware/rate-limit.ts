@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../lib/errors.js";
+import { logger } from "../lib/logger.js";
 import { getRedis } from "../lib/redis.js";
 
 interface Bucket {
@@ -42,7 +43,7 @@ export async function resetRateLimits(): Promise<void> {
       await redis.del(keys);
     }
   } catch (error) {
-    console.error("Redis rate limit reset failed:", (error as Error).message);
+    logger.warn("Redis rate limit reset failed", error);
   }
 }
 
@@ -97,7 +98,10 @@ export function multiRateLimit(buckets: RateLimitOptions[]) {
  * Redis keeps the window shared across instances; without Redis the local
  * fallback keeps working so a cache outage cannot unlock the API.
  */
-async function consume(identifier: string, windowMs: number): Promise<{ count: number; ttlMs: number }> {
+async function consume(
+  identifier: string,
+  windowMs: number,
+): Promise<{ count: number; ttlMs: number }> {
   try {
     const redis = await getRedis();
 
@@ -110,11 +114,10 @@ async function consume(identifier: string, windowMs: number): Promise<{ count: n
       return { count: Number(result[0]), ttlMs: Number(result[1]) };
     }
   } catch (error) {
-    console.error("Redis rate limit failed, using local fallback:", (error as Error).message);
+    logger.warn("Redis rate limit failed; using local fallback", error);
   }
 
   const now = Date.now();
-  const ttlMs = (buckets.get(identifier)?.resetAt ?? 0) - now;
 
   if (buckets.size >= maxTrackedKeys) {
     for (const [key, bucket] of buckets) {

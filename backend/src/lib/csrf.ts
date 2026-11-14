@@ -3,8 +3,8 @@ import type { CookieOptions, NextFunction, Request, Response } from "express";
 import { AppError } from "./errors.js";
 import { baseCookieOptions, parseCookies, sessionTtlMs } from "./session.js";
 
-export const CSRF_COOKIE = "safesignal_csrf";
-export const CSRF_HEADER = "x-csrf-token";
+const CSRF_COOKIE = "safesignal_csrf";
+const CSRF_HEADER = "x-csrf-token";
 
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 const exemptPaths = new Set(["/auth/login", "/auth/register", "/health"]);
@@ -13,7 +13,7 @@ const exemptPaths = new Set(["/auth/login", "/auth/register", "/health"]);
  * The CSRF cookie is intentionally readable by the SPA (not HttpOnly) because
  * the frontend has to echo the token back in the x-csrf-token header.
  */
-export const csrfCookieOptions = (): CookieOptions => ({
+const csrfCookieOptions = (): CookieOptions => ({
   ...baseCookieOptions(),
   // Readable by the SPA so it can echo the token in the x-csrf-token header.
   httpOnly: false,

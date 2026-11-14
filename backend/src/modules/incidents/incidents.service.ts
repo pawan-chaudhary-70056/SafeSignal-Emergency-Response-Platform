@@ -22,10 +22,7 @@ const incidentInclude = {
 
 type IncidentWithRelations = Prisma.IncidentGetPayload<{ include: typeof incidentInclude }>;
 type AssignmentRecord = IncidentWithRelations["assignments"][number];
-type ViewerAssignment = Pick<
-  AssignmentRecord,
-  "id" | "incidentId" | "status" | "assignedAt"
->;
+type ViewerAssignment = Pick<AssignmentRecord, "id" | "incidentId" | "status" | "assignedAt">;
 
 /**
  * A citizen-safe incident carries either the full dispatch assignment or the
@@ -67,9 +64,7 @@ function sanitizeForViewer<T extends IncidentWithRelations>(
 
 function isUniqueConstraintError(error: unknown): boolean {
   return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "P2002"
+    typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002"
   );
 }
 
@@ -113,8 +108,7 @@ export async function createIncident(
           idempotencyKey,
           latitude: input.location?.latitude ?? null,
           longitude: input.location?.longitude ?? null,
-          locationDescription:
-            input.locationDescription ?? input.location?.description ?? null,
+          locationDescription: input.locationDescription ?? input.location?.description ?? null,
         },
       });
 
@@ -314,7 +308,8 @@ export async function getIncidentStats(actor: Actor) {
 
   return {
     total,
-    active: total -
+    active:
+      total -
       (statusMap.get("CLOSED") ?? 0) -
       (statusMap.get("REJECTED") ?? 0) -
       (statusMap.get("CANCELLED") ?? 0),
@@ -338,6 +333,28 @@ export async function getIncidentStats(actor: Actor) {
   };
 }
 
+/**
+ * Shared incident-view scoping (used by both the incident and evidence
+ * modules): citizens see only their own reports, responders only incidents
+ * they are assigned to, and operational roles the full dispatch scope. A
+ * foreign or missing id always produces the same 404 so ids cannot be probed.
+ */
+export function assertIncidentScope(
+  actor: Actor,
+  incident: { citizenId: string; assignments: Array<{ responderId: string }> },
+): void {
+  if (actor.role === "CITIZEN" && incident.citizenId !== actor.userId) {
+    throw notFound("Incident not found");
+  }
+
+  if (
+    actor.role === "RESPONDER" &&
+    !incident.assignments.some((assignment) => assignment.responderId === actor.userId)
+  ) {
+    throw notFound("Incident not found");
+  }
+}
+
 export async function getIncident(actor: Actor, incidentId: string) {
   const incident = await prisma.incident.findUnique({
     where: { id: incidentId },
@@ -351,16 +368,7 @@ export async function getIncident(actor: Actor, incidentId: string) {
     throw notFound("Incident not found");
   }
 
-  if (actor.role === "CITIZEN" && incident.citizenId !== actor.userId) {
-    throw notFound("Incident not found");
-  }
-
-  if (
-    actor.role === "RESPONDER" &&
-    !incident.assignments.some((assignment) => assignment.responderId === actor.userId)
-  ) {
-    throw notFound("Incident not found");
-  }
+  assertIncidentScope(actor, incident);
 
   return sanitizeForViewer(actor, incident);
 }
@@ -370,7 +378,7 @@ interface TransitionOptions {
   historyReason?: string;
 }
 
-export async function transitionIncident(
+async function transitionIncident(
   actor: Actor,
   incidentId: string,
   next: IncidentStatus,
@@ -440,6 +448,38 @@ export const rejectIncident = (actor: Actor, incidentId: string, reason: string)
 
 export const closeIncident = (actor: Actor, incidentId: string) =>
   transitionIncident(actor, incidentId, "CLOSED", { data: { closedAt: new Date() } });
+
+/** Lifecycle states where the reporting citizen may still cancel. */
+const CITIZEN_CANCELLABLE_STATUSES: IncidentStatus[] = ["SUBMITTED", "UNDER_REVIEW", "VERIFIED"];
+
+/**
+ * FR-026: the reporting citizen may request cancellation while the incident is
+ * still eligible. Ownership and the lifecycle are validated before processing,
+ * so the request can never force a protected lifecycle transition — once
+ * responders are dispatched only the dispatch workflow can finish the incident.
+ */
+export async function cancelIncident(actor: Actor, incidentId: string, reason?: string) {
+  const existing = await prisma.incident.findUnique({
+    where: { id: incidentId },
+    select: { citizenId: true, status: true },
+  });
+
+  // Same response for missing and foreign incidents: citizens cannot probe ids.
+  if (!existing || existing.citizenId !== actor.userId) {
+    throw notFound("Incident not found");
+  }
+
+  if (!CITIZEN_CANCELLABLE_STATUSES.includes(existing.status)) {
+    throw conflict(
+      "INCIDENT_NOT_CANCELLABLE",
+      "This incident has already been dispatched. Contact dispatch to withdraw it.",
+    );
+  }
+
+  return transitionIncident(actor, incidentId, "CANCELLED", {
+    historyReason: reason?.trim() || "Cancelled at the citizen's request",
+  });
+}
 
 export async function setIncidentPriority(
   actor: Actor,

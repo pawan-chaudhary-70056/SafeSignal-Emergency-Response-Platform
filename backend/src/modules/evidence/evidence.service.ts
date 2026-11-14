@@ -1,20 +1,15 @@
 import type { Incident, Prisma } from "@prisma/client";
 import { badRequest, conflict, forbidden, notFound } from "../../lib/errors.js";
 import type { Actor } from "../../lib/http.js";
+import { logger } from "../../lib/logger.js";
 import { prisma } from "../../lib/prisma.js";
 import { emitToRole, emitToUser } from "../../realtime/index.js";
+import { enqueueJob } from "../../worker/worker.js";
+import { assertIncidentScope } from "../incidents/incidents.service.js";
 import { notifyEvidenceAdded } from "../notifications/notifications.service.js";
 
 /** Hard cap for a single evidence file, matching the client-side check. */
 export const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
-
-/** Only formats whose content can be verified by magic bytes are accepted. */
-export const EVIDENCE_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf",
-] as const;
 
 export interface EvidenceMeta {
   id: string;
@@ -85,6 +80,8 @@ function sniffMimeType(content: Buffer): string | null {
 
 function sanitizeFileName(raw: string): string {
   const base = raw.split(/[\\/]/).pop() ?? "evidence";
+  // Stripping control characters is the point: the file name is user input.
+  // eslint-disable-next-line no-control-regex
   const cleaned = base.replace(/[\u0000-\u001f\u007f]/g, "").trim();
   return (cleaned.length > 0 ? cleaned : "evidence").slice(0, 255);
 }
@@ -94,11 +91,11 @@ type IncidentWithAssignments = Incident & {
 };
 
 /**
- * Loads an incident and enforces resource-level access: citizens only their
- * own reports, responders only incidents they are assigned to, and operational
- * roles the full dispatch scope.
+ * Loads an incident and enforces resource-level access through the shared
+ * scoping helper (citizens only their own reports, responders only incidents
+ * they are assigned to, operational roles the full dispatch scope).
  */
-export async function loadIncidentForViewer(
+async function loadIncidentForViewer(
   actor: Actor,
   incidentId: string,
 ): Promise<IncidentWithAssignments> {
@@ -111,13 +108,9 @@ export async function loadIncidentForViewer(
     throw notFound("Incident not found");
   }
 
-  if (actor.role === "CITIZEN" && incident.citizenId !== actor.userId) {
-    throw forbidden("You can only access your own incident reports");
-  }
-
-  if (actor.role === "RESPONDER" && !incident.assignments.some((a) => a.responderId === actor.userId)) {
-    throw forbidden("You can only access incidents you are assigned to");
-  }
+  // Same 404 as the incident module for foreign or unassigned access, so an
+  // incident id cannot be probed through the evidence endpoints either.
+  assertIncidentScope(actor, incident);
 
   return incident;
 }
@@ -186,7 +179,11 @@ export async function addEvidence(
       action: "evidence.uploaded",
       entityType: "Incident",
       entityId: incident.id,
-      metadata: { evidenceId: evidence.id, fileName: evidence.fileName, sizeBytes: evidence.sizeBytes },
+      metadata: {
+        evidenceId: evidence.id,
+        fileName: evidence.fileName,
+        sizeBytes: evidence.sizeBytes,
+      },
     },
   });
 
@@ -205,11 +202,27 @@ export async function addEvidence(
     emitToUser(incident.citizenId, "incident.evidence_updated", payload);
 
     await notifyEvidenceAdded({
-      incident: { id: incident.id, referenceNumber: incident.referenceNumber, citizenId: incident.citizenId },
+      incident: {
+        id: incident.id,
+        referenceNumber: incident.referenceNumber,
+        citizenId: incident.citizenId,
+      },
       uploader: { id: actor.userId, role: actor.role, fullName: evidence.uploadedBy.fullName },
     });
   } catch (error) {
-    console.error("Evidence notification failed", error);
+    // NFR-054: a delivery failure is queued for the background worker instead
+    // of being dropped, so the notification survives restarts and retries.
+    await enqueueJob("evidence.notify", {
+      incident: {
+        id: incident.id,
+        referenceNumber: incident.referenceNumber,
+        citizenId: incident.citizenId,
+      },
+      uploader: { id: actor.userId, role: actor.role, fullName: evidence.uploadedBy.fullName },
+    });
+    logger.error("Evidence notification failed; queued for retry", error, {
+      incidentId: incident.id,
+    });
   }
 
   return evidence;

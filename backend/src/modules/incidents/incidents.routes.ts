@@ -5,6 +5,7 @@ import { pathParam } from "../../lib/params.js";
 import { authenticate, requireRole } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rate-limit.js";
 import {
+  cancelIncident,
   closeIncident,
   createIncident,
   getIncident,
@@ -63,6 +64,7 @@ const listQuerySchema = z.object({
 });
 
 const rejectSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+const cancelSchema = z.object({ reason: z.string().trim().min(3).max(500).optional() });
 const prioritySchema = z.object({ priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]) });
 
 export const incidentsRouter = Router();
@@ -143,12 +145,26 @@ incidentsRouter.post(
   }),
 );
 
+// FR-026: the reporting citizen may request cancellation while the incident is
+// still eligible. The service validates ownership and the lifecycle before
+// processing, so the request can never force a protected transition.
+incidentsRouter.post(
+  "/:id/cancel",
+  requireRole("CITIZEN"),
+  asyncHandler(async (req, res) => {
+    const { reason } = cancelSchema.parse(req.body ?? {});
+    res.json({ incident: await cancelIncident(actorFrom(req), pathParam(req, "id"), reason) });
+  }),
+);
+
 incidentsRouter.patch(
   "/:id/priority",
   requireRole("DISPATCHER"),
   asyncHandler(async (req, res) => {
     const { priority } = prioritySchema.parse(req.body ?? {});
-    res.json({ incident: await setIncidentPriority(actorFrom(req), pathParam(req, "id"), priority) });
+    res.json({
+      incident: await setIncidentPriority(actorFrom(req), pathParam(req, "id"), priority),
+    });
   }),
 );
 

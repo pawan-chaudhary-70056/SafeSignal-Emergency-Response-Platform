@@ -7,31 +7,43 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"scripts/**/*.{ts,mjs}\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"scripts/**/*.{ts,mjs}\"",
     "test": "tsx scripts/run-tests.ts",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
     "db:seed:production": "tsx scripts/seed-production.ts",
     "db:seed:demo": "tsx scripts/seed-demo.ts",
     "db:reset:demo": "tsx scripts/reset-demo.ts",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "perf:latency": "node scripts/latency-check.mjs",
+    "test:coverage": "tsx scripts/run-tests.ts --coverage"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
     "@prisma/client": "6.19.3",
+    "@socket.io/redis-adapter": "^8.3.0",
     "express": "^5.1.0",
     "redis": "^6.3.1",
     "socket.io": "^4.8.4",
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.0",
     "@types/supertest": "^6.0.3",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.10.1",
     "prisma": "6.19.3",
     "socket.io-client": "^4.8.4",
     "supertest": "^7.1.4",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.2"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2"
