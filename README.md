@@ -390,8 +390,6 @@ Security is therefore a core design consideration.
 - Location and contact information should be protected.
 - Sensitive data should not be exposed through logs or notifications unnecessarily.
 
-For more details, see the security documentation under `docs/07-security/`.
-
 ---
 
 ## Project Structure
