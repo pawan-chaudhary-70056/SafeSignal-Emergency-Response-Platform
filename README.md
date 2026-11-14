@@ -105,6 +105,8 @@ The platform uses PostgreSQL as its primary data source and Socket.IO for real-t
 - Manual location entry when geolocation is unavailable.
 - Incident reference and status visibility.
 - Personal incident history.
+- Supporting evidence attachment and download.
+- Profile management with protected account fields.
 - In-app notifications.
 
 ### Dispatcher Features
@@ -118,6 +120,7 @@ The platform uses PostgreSQL as its primary data source and Socket.IO for real-t
 - Assignment monitoring.
 - Incident status monitoring.
 - Dispatch notes and operational history.
+- Supporting evidence attachment and download.
 
 ### Responder Features
 
@@ -132,7 +135,7 @@ The platform uses PostgreSQL as its primary data source and Socket.IO for real-t
 
 ### Administrator Features
 
-- User management.
+- User creation and profile correction.
 - Role management.
 - Emergency category management.
 - Account status management.
@@ -146,6 +149,7 @@ The platform uses PostgreSQL as its primary data source and Socket.IO for real-t
 - Incident and assignment lifecycle management.
 - Real-time communication using Socket.IO.
 - In-app notifications.
+- Private evidence storage with content validation.
 - Location display using Leaflet.
 - OpenStreetMap-based map tiles.
 - Input validation using Zod.
@@ -641,6 +645,58 @@ Testing should cover the critical application workflows and security controls.
 - Use simulated incidents and authorized test accounts.
 
 Run the test scripts defined in the respective package files.
+
+### Backend Integration Tests
+
+```bash
+cd backend
+npm test
+```
+
+The suite (26 tests) runs against an isolated `*_test` database, so it never touches development data.
+
+Line coverage uses Node's built-in test instrumentation, so no extra coverage dependency is required:
+
+```bash
+cd backend
+npm run test:coverage
+```
+
+The command prints a per-file coverage table after the suite finishes.
+
+API response-time validation (NFR-016): `npm run perf:latency` measures p50/p95 latency of the common read endpoints against a running API and exits non-zero if any endpoint misses the 500 ms p95 target. Results and method are recorded in `docs/08-testing/performance-and-latency-validation.md`.
+
+### Playwright E2E Suite
+
+Start the backend (`npm run dev` in `backend/`) and the frontend (`npm run dev` in `frontend/`), then:
+
+```bash
+cd frontend
+npx playwright test
+```
+
+The 16-check suite covers the full emergency flow (report → review → verify → assign → accept → respond → resolve → close), citizen cancellation, reassignment history, evidence attachment with profile management, admin user creation and inline profile correction, socket reconnection recovery, location capture with the map picker, accessibility, and mobile (Pixel 5) navigation.
+
+The suite is rerunnable: each run cleans up after itself, and two consecutive runs pass without touching the database. For further back-to-back reruns, reset the demo state first — it clears demo incidents and evidence, frees responders, restores demo identities, and clears rate-limit counters:
+
+```bash
+cd backend
+npm run db:reset:demo
+```
+
+Demo accounts (password `Password123!`) are reseeded with `npm run db:seed:demo`.
+
+### Static Quality Checks
+
+Both applications use TypeScript strict mode, ESLint (flat config) and Prettier. Run the same checks in either `backend/` or `frontend/`:
+
+```bash
+npm run typecheck
+npm run lint
+npm run format:check
+```
+
+`npm run format` applies the Prettier configuration. `npm run lint:fix` applies the automatically fixable ESLint rules.
 
 ---
 
